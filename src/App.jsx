@@ -210,7 +210,8 @@ const EnhancedAnalyticsTab = ({ setShowAuthModal }) => {
 };
 
 /**
- * Enhanced Insights Tab with proper data handling
+ * FIXED Enhanced Insights Tab with proper data handling and no object rendering
+ * This replaces the EnhancedInsightsTab component in your App.jsx file
  */
 const EnhancedInsightsTab = ({ setShowAuthModal }) => {
     const { user } = useAuth();
@@ -236,7 +237,9 @@ const EnhancedInsightsTab = ({ setShowAuthModal }) => {
                 <div className="text-red-600 mb-4">
                     <AlertCircle className="w-12 h-12 mx-auto mb-2" />
                     <p className="font-medium">Failed to load insights</p>
-                    <p className="text-sm text-gray-600 mt-1">{insightsData.error.message}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                        {typeof insightsData.error === 'string' ? insightsData.error : insightsData.error?.message || 'Unknown error'}
+                    </p>
                 </div>
                 <button
                     onClick={insightsData.refreshData}
@@ -267,6 +270,17 @@ const EnhancedInsightsTab = ({ setShowAuthModal }) => {
         );
     }
 
+    // CRITICAL FIX: Safe data extraction with proper fallbacks
+    const safeData = {
+        keyInsights: Array.isArray(insightsData.data.keyInsights) ? insightsData.data.keyInsights : [],
+        recommendations: Array.isArray(insightsData.data.recommendations) ? insightsData.data.recommendations :
+            Array.isArray(insightsData.data.actionable_recommendations) ? insightsData.data.actionable_recommendations : [],
+        riskAlerts: Array.isArray(insightsData.data.riskAlerts) ? insightsData.data.riskAlerts :
+            Array.isArray(insightsData.data.risk_alerts) ? insightsData.data.risk_alerts : [],
+        marketTrends: Array.isArray(insightsData.data.marketTrends) ? insightsData.data.marketTrends :
+            Array.isArray(insightsData.data.market_context) ? insightsData.data.market_context : []
+    };
+
     return (
         <div className="space-y-8">
             <div className="flex justify-between items-center">
@@ -285,98 +299,177 @@ const EnhancedInsightsTab = ({ setShowAuthModal }) => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Key Insights */}
-                {insightsData.data.keyInsights && insightsData.data.keyInsights.length > 0 && (
+                {safeData.keyInsights && safeData.keyInsights.length > 0 && (
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                         <h3 className="text-lg font-semibold mb-4 flex items-center">
                             <Brain className="w-5 h-5 mr-2 text-blue-600" />
                             Key Insights
                         </h3>
                         <div className="space-y-3">
-                            {insightsData.data.keyInsights.map((insight, index) => (
-                                <div key={index} className="p-3 bg-blue-50 rounded-lg">
-                                    <p className="text-sm text-gray-700">{insight}</p>
-                                </div>
-                            ))}
+                            {safeData.keyInsights.map((insight, index) => {
+                                // CRITICAL FIX: Ensure insight is rendered as string
+                                const insightText = typeof insight === 'string' ? insight :
+                                    typeof insight === 'object' && insight?.text ? insight.text :
+                                        JSON.stringify(insight);
+
+                                return (
+                                    <div key={index} className="p-3 bg-blue-50 rounded-lg">
+                                        <p className="text-sm text-gray-700">{insightText}</p>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
 
                 {/* Recommendations */}
-                {insightsData.data.recommendations && insightsData.data.recommendations.length > 0 && (
+                {safeData.recommendations && safeData.recommendations.length > 0 && (
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                         <h3 className="text-lg font-semibold mb-4 flex items-center">
                             <Target className="w-5 h-5 mr-2 text-green-600" />
                             Recommendations
                         </h3>
                         <div className="space-y-3">
-                            {insightsData.data.recommendations.map((rec, index) => (
-                                <div key={index} className="p-3 bg-green-50 rounded-lg">
-                                    <p className="text-sm text-gray-700">{rec}</p>
-                                </div>
-                            ))}
+                            {safeData.recommendations.map((rec, index) => {
+                                // CRITICAL FIX: Ensure recommendation is rendered as string
+                                let recText = '';
+
+                                if (typeof rec === 'string') {
+                                    recText = rec;
+                                } else if (typeof rec === 'object' && rec !== null) {
+                                    // Extract text from object safely
+                                    recText = rec.title || rec.action || rec.recommendation ||
+                                        (typeof rec.text === 'string' ? rec.text : '') ||
+                                        'Recommendation details not available';
+                                } else {
+                                    recText = 'Invalid recommendation format';
+                                }
+
+                                return (
+                                    <div key={index} className="p-3 bg-green-50 rounded-lg">
+                                        <p className="text-sm text-gray-700">{recText}</p>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
 
                 {/* Risk Alerts */}
-                {insightsData.data.riskAlerts && insightsData.data.riskAlerts.length > 0 && (
+                {safeData.riskAlerts && safeData.riskAlerts.length > 0 && (
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                         <h3 className="text-lg font-semibold mb-4 flex items-center">
                             <AlertCircle className="w-5 h-5 mr-2 text-red-600" />
                             Risk Alerts
                         </h3>
                         <div className="space-y-3">
-                            {insightsData.data.riskAlerts.map((alert, index) => (
-                                <div key={index} className={`p-3 rounded-lg ${alert.level === 'High' ? 'bg-red-50' :
-                                        alert.level === 'Medium' ? 'bg-yellow-50' : 'bg-gray-50'
-                                    }`}>
-                                    <div className="flex justify-between items-start mb-1">
-                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${alert.level === 'High' ? 'bg-red-100 text-red-800' :
-                                                alert.level === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                                                    'bg-gray-100 text-gray-800'
-                                            }`}>
-                                            {alert.level}
-                                        </span>
+                            {safeData.riskAlerts.map((alert, index) => {
+                                // CRITICAL FIX: Ensure alert is rendered as string
+                                let alertText = '';
+                                let alertLevel = 'Medium';
+
+                                if (typeof alert === 'string') {
+                                    alertText = alert;
+                                } else if (typeof alert === 'object' && alert !== null) {
+                                    alertText = alert.message || alert.title || alert.alert ||
+                                        (typeof alert.text === 'string' ? alert.text : '') ||
+                                        'Alert details not available';
+                                    alertLevel = alert.level || alert.severity || 'Medium';
+                                } else {
+                                    alertText = 'Invalid alert format';
+                                }
+
+                                const levelColors = {
+                                    'High': 'bg-red-50',
+                                    'Medium': 'bg-yellow-50',
+                                    'Low': 'bg-gray-50'
+                                };
+
+                                return (
+                                    <div key={index} className={`p-3 rounded-lg ${levelColors[alertLevel] || levelColors.Medium}`}>
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${alertLevel === 'High' ? 'bg-red-100 text-red-800' :
+                                                    alertLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                {alertLevel}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-700">{alertText}</p>
                                     </div>
-                                    <p className="text-sm text-gray-700 mb-1">{alert.message}</p>
-                                    <p className="text-xs text-gray-500">{alert.action}</p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}
 
                 {/* Market Trends */}
-                {insightsData.data.marketTrends && insightsData.data.marketTrends.length > 0 && (
+                {safeData.marketTrends && safeData.marketTrends.length > 0 && (
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                         <h3 className="text-lg font-semibold mb-4 flex items-center">
                             <TrendingUp className="w-5 h-5 mr-2 text-purple-600" />
                             Market Trends
                         </h3>
                         <div className="space-y-4">
-                            {insightsData.data.marketTrends.map((trend, index) => (
-                                <div key={index} className="border-l-4 border-purple-300 pl-4">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <h4 className="font-medium text-gray-900">{trend.trend}</h4>
-                                        <span className={`text-xs px-2 py-1 rounded-full ${trend.impact === 'High' ? 'bg-red-100 text-red-800' :
-                                                trend.impact === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                                                    'bg-green-100 text-green-800'
-                                            }`}>
-                                            {trend.impact} Impact
-                                        </span>
+                            {safeData.marketTrends.map((trend, index) => {
+                                // CRITICAL FIX: Ensure trend is rendered as string
+                                let trendTitle = '';
+                                let trendDescription = '';
+                                let trendImpact = 'Medium';
+                                let trendRecommendation = '';
+
+                                if (typeof trend === 'string') {
+                                    trendTitle = trend;
+                                    trendDescription = 'Market trend information';
+                                } else if (typeof trend === 'object' && trend !== null) {
+                                    trendTitle = trend.trend || trend.title || trend.name || `Market Trend ${index + 1}`;
+                                    trendDescription = trend.description || trend.desc || 'Description not available';
+                                    trendImpact = trend.impact || trend.level || 'Medium';
+                                    trendRecommendation = trend.recommendation || trend.action || '';
+                                } else {
+                                    trendTitle = 'Invalid trend format';
+                                    trendDescription = 'Trend data processing error';
+                                }
+
+                                return (
+                                    <div key={index} className="border-l-4 border-purple-300 pl-4">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h4 className="font-medium text-gray-900">{trendTitle}</h4>
+                                            <span className={`text-xs px-2 py-1 rounded-full ${trendImpact === 'High' ? 'bg-red-100 text-red-800' :
+                                                    trendImpact === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-green-100 text-green-800'
+                                                }`}>
+                                                {trendImpact} Impact
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mb-2">{trendDescription}</p>
+                                        {trendRecommendation && (
+                                            <p className="text-xs text-gray-500 italic">{trendRecommendation}</p>
+                                        )}
                                     </div>
-                                    <p className="text-sm text-gray-600 mb-2">{trend.description}</p>
-                                    <p className="text-xs text-gray-500 italic">{trend.recommendation}</p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}
             </div>
+
+            {/* Show fallback message if no data */}
+            {(!safeData.keyInsights || safeData.keyInsights.length === 0) &&
+                (!safeData.recommendations || safeData.recommendations.length === 0) &&
+                (!safeData.riskAlerts || safeData.riskAlerts.length === 0) &&
+                (!safeData.marketTrends || safeData.marketTrends.length === 0) && (
+                    <div className="text-center py-8">
+                        <Brain className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-800 mb-2">Processing Insights</h3>
+                        <p className="text-gray-600">
+                            AI insights are being generated from your prediction data.
+                        </p>
+                    </div>
+                )}
         </div>
     );
 };
-
 /**
  * Main application content component with navigation handling
  */

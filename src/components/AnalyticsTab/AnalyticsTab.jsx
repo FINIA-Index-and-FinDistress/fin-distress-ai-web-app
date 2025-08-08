@@ -5,7 +5,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import usePredictionData from "../../hooks/usePredictionData";
 
 /**
- * ENHANCED Analytics Tab with improved chart rendering and data visualization
+ * FIXED Analytics Tab with proper data handling and no object rendering
  */
 const AnalyticsTab = () => {
     const { data, isLoading, error, refreshData, hasData, dataQuality } = usePredictionData('analytics');
@@ -32,12 +32,69 @@ const AnalyticsTab = () => {
     useEffect(() => {
         if (data) {
             console.log('[AnalyticsTab] Current data structure:', data);
-            console.log('[AnalyticsTab] Key metrics:', data.key_metrics);
-            console.log('[AnalyticsTab] Risk distribution:', data.riskDistribution || data.key_metrics?.risk_distribution);
-            console.log('[AnalyticsTab] Factor contribution:', data.factor_contribution);
-            console.log('[AnalyticsTab] Trends:', data.risk_trend_analysis);
         }
     }, [data]);
+
+    /**
+     * Safe data extraction helper
+     */
+    const safeExtractData = useCallback((data, path, fallback = []) => {
+        try {
+            const keys = path.split('.');
+            let current = data;
+            for (const key of keys) {
+                if (current && typeof current === 'object' && key in current) {
+                    current = current[key];
+                } else {
+                    return fallback;
+                }
+            }
+            return Array.isArray(current) ? current : fallback;
+        } catch (e) {
+            console.warn(`Failed to extract path ${path}:`, e);
+            return fallback;
+        }
+    }, []);
+
+    /**
+     * Safe value extraction helper
+     */
+    const safeExtractValue = useCallback((data, path, fallback = 0) => {
+        try {
+            const keys = path.split('.');
+            let current = data;
+            for (const key of keys) {
+                if (current && typeof current === 'object' && key in current) {
+                    current = current[key];
+                } else {
+                    return fallback;
+                }
+            }
+            return typeof current === 'number' ? current : fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }, []);
+
+    /**
+     * Safe string extraction helper
+     */
+    const safeExtractString = useCallback((data, path, fallback = '') => {
+        try {
+            const keys = path.split('.');
+            let current = data;
+            for (const key of keys) {
+                if (current && typeof current === 'object' && key in current) {
+                    current = current[key];
+                } else {
+                    return fallback;
+                }
+            }
+            return typeof current === 'string' ? current : String(current || fallback);
+        } catch (e) {
+            return fallback;
+        }
+    }, []);
 
     /**
      * Render authentication requirement notice
@@ -78,7 +135,9 @@ const AnalyticsTab = () => {
             <div className="text-center p-8 bg-red-50 rounded-xl border border-red-200 max-w-md">
                 <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-red-800 mb-2">Analytics Unavailable</h3>
-                <p className="text-red-700 text-sm mb-4">{error?.message || 'Failed to load analytics'}</p>
+                <p className="text-red-700 text-sm mb-4">
+                    {typeof error === 'string' ? error : error?.message || 'Failed to load analytics'}
+                </p>
                 <button
                     onClick={handleRefresh}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
@@ -113,10 +172,10 @@ const AnalyticsTab = () => {
     );
 
     /**
-     * ENHANCED: Risk Distribution Chart with better visualization
+     * FIXED: Risk Distribution Chart with safe data handling
      */
-    const RiskDistributionChart = ({ data, title = "Risk Distribution" }) => {
-        const riskData = data || [];
+    const RiskDistributionChart = ({ data: chartData, title = "Risk Distribution" }) => {
+        const riskData = safeExtractData(chartData, '', []);
 
         if (!riskData || riskData.length === 0) {
             return (
@@ -135,7 +194,13 @@ const AnalyticsTab = () => {
             );
         }
 
-        const total = riskData.reduce((sum, item) => sum + (item.value || item.count || 0), 0);
+        const processedData = riskData.map(item => ({
+            name: safeExtractString(item, 'name', safeExtractString(item, 'category', 'Unknown')),
+            value: safeExtractValue(item, 'value', safeExtractValue(item, 'count', 0)),
+            percentage: safeExtractValue(item, 'percentage', 0)
+        }));
+
+        const total = processedData.reduce((sum, item) => sum + item.value, 0);
 
         return (
             <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
@@ -152,25 +217,23 @@ const AnalyticsTab = () => {
                 {/* Visual pie chart representation */}
                 <div className="mb-6">
                     <div className="relative mx-auto w-48 h-48">
-                        {/* Simple CSS pie chart */}
                         <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-400 to-green-500 shadow-lg"></div>
-                        {riskData[1] && riskData[1].value > 0 && (
+                        {processedData[1] && processedData[1].value > 0 && (
                             <div
                                 className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500"
                                 style={{
-                                    clipPath: `polygon(50% 50%, 50% 0%, ${50 + (riskData[1].percentage || 0) * 0.5}% 0%, 100% 100%, 50% 100%)`
+                                    clipPath: `polygon(50% 50%, 50% 0%, ${50 + (processedData[1].percentage || 0) * 0.5}% 0%, 100% 100%, 50% 100%)`
                                 }}
                             ></div>
                         )}
-                        {riskData[2] && riskData[2].value > 0 && (
+                        {processedData[2] && processedData[2].value > 0 && (
                             <div
                                 className="absolute inset-0 rounded-full bg-gradient-to-r from-red-400 to-red-500"
                                 style={{
-                                    clipPath: `polygon(50% 50%, 50% 0%, 100% 0%, 100% ${riskData[2].percentage || 0}%, 50% 100%)`
+                                    clipPath: `polygon(50% 50%, 50% 0%, 100% 0%, 100% ${processedData[2].percentage || 0}%, 50% 100%)`
                                 }}
                             ></div>
                         )}
-                        {/* Center circle */}
                         <div className="absolute inset-12 rounded-full bg-white shadow-inner flex items-center justify-center">
                             <div className="text-center">
                                 <div className="text-2xl font-bold text-gray-800">{total}</div>
@@ -182,9 +245,8 @@ const AnalyticsTab = () => {
 
                 {/* Legend and details */}
                 <div className="space-y-4">
-                    {riskData.map((item, index) => {
-                        const value = item.value || item.count || 0;
-                        const percentage = item.percentage || (total > 0 ? ((value / total) * 100).toFixed(1) : 0);
+                    {processedData.map((item, index) => {
+                        const percentage = item.percentage || (total > 0 ? ((item.value / total) * 100).toFixed(1) : 0);
                         const colors = [
                             { bg: 'bg-green-500', text: 'text-green-800', bgLight: 'bg-green-50', border: 'border-green-200' },
                             { bg: 'bg-yellow-500', text: 'text-yellow-800', bgLight: 'bg-yellow-50', border: 'border-yellow-200' },
@@ -198,11 +260,11 @@ const AnalyticsTab = () => {
                                     <div className="flex items-center">
                                         <div className={`w-4 h-4 rounded-full ${colorSet.bg} mr-3`}></div>
                                         <span className={`text-sm font-semibold ${colorSet.text}`}>
-                                            {item.name || item.category}
+                                            {item.name}
                                         </span>
                                     </div>
                                     <div className="text-right">
-                                        <span className={`text-lg font-bold ${colorSet.text}`}>{value}</span>
+                                        <span className={`text-lg font-bold ${colorSet.text}`}>{item.value}</span>
                                         <span className="text-xs text-gray-500 ml-1">({percentage}%)</span>
                                     </div>
                                 </div>
@@ -221,10 +283,10 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * ENHANCED: Trends Chart with better visualization
+     * FIXED: Trends Chart with safe data handling
      */
-    const TrendsChart = ({ data, title = "Risk Trends" }) => {
-        const trendsData = data || [];
+    const TrendsChart = ({ data: chartData, title = "Risk Trends" }) => {
+        const trendsData = safeExtractData(chartData, '', []);
 
         if (!trendsData || trendsData.length === 0) {
             return (
@@ -243,9 +305,15 @@ const AnalyticsTab = () => {
             );
         }
 
-        const maxValue = Math.max(...trendsData.map(item =>
-            Math.abs(item.health_score || item.user_risk || item.risk_score || item.value || 0)
-        ));
+        const processedData = trendsData.map(item => ({
+            period: safeExtractString(item, 'period', safeExtractString(item, 'date', 'Unknown')),
+            value: safeExtractValue(item, 'health_score',
+                safeExtractValue(item, 'risk_score',
+                    safeExtractValue(item, 'value', 0))),
+            predictionCount: safeExtractValue(item, 'prediction_count', 0)
+        }));
+
+        const maxValue = Math.max(...processedData.map(item => Math.abs(item.value)));
 
         return (
             <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
@@ -255,7 +323,7 @@ const AnalyticsTab = () => {
                         <h3 className="text-lg font-semibold">{title}</h3>
                     </div>
                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        {trendsData.length} periods
+                        {processedData.length} periods
                     </span>
                 </div>
 
@@ -271,37 +339,35 @@ const AnalyticsTab = () => {
                                     style={{ top: `${i * 25}%`, left: 0, right: 0 }}
                                 ></div>
                             ))}
-                            {[...Array(trendsData.length + 1)].map((_, i) => (
+                            {[...Array(processedData.length + 1)].map((_, i) => (
                                 <div
                                     key={i}
                                     className="absolute border-l border-gray-200 h-full"
-                                    style={{ left: `${(i / trendsData.length) * 100}%` }}
+                                    style={{ left: `${(i / Math.max(processedData.length, 1)) * 100}%` }}
                                 ></div>
                             ))}
                         </div>
 
                         {/* Data points and line */}
                         <svg className="absolute inset-0 w-full h-full">
-                            {trendsData.length > 1 && (
+                            {processedData.length > 1 && (
                                 <polyline
                                     fill="none"
                                     stroke="url(#gradient)"
                                     strokeWidth="3"
-                                    points={trendsData.map((item, index) => {
-                                        const x = (index / (trendsData.length - 1)) * 100;
-                                        const value = item.health_score || item.user_risk || item.risk_score || item.value || 0;
-                                        const y = 100 - ((Math.abs(value) / maxValue) * 100);
+                                    points={processedData.map((item, index) => {
+                                        const x = (index / Math.max(processedData.length - 1, 1)) * 100;
+                                        const y = maxValue > 0 ? 100 - ((Math.abs(item.value) / maxValue) * 100) : 50;
                                         return `${x},${y}`;
                                     }).join(' ')}
                                 />
                             )}
 
                             {/* Data points */}
-                            {trendsData.map((item, index) => {
-                                const x = (index / Math.max(trendsData.length - 1, 1)) * 100;
-                                const value = item.health_score || item.user_risk || item.risk_score || item.value || 0;
-                                const y = 100 - ((Math.abs(value) / maxValue) * 100);
-                                const isPositive = value >= 0;
+                            {processedData.map((item, index) => {
+                                const x = (index / Math.max(processedData.length - 1, 1)) * 100;
+                                const y = maxValue > 0 ? 100 - ((Math.abs(item.value) / maxValue) * 100) : 50;
+                                const isPositive = item.value >= 0;
 
                                 return (
                                     <circle
@@ -329,26 +395,24 @@ const AnalyticsTab = () => {
 
                 {/* Data details */}
                 <div className="space-y-3 max-h-32 overflow-y-auto">
-                    {trendsData.slice(0, 6).map((item, index) => {
-                        const value = item.health_score || item.user_risk || item.risk_score || item.value || 0;
-                        const isPositive = value >= 0;
+                    {processedData.slice(0, 6).map((item, index) => {
+                        const isPositive = item.value >= 0;
 
                         return (
                             <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                 <div className="flex items-center">
                                     <div className={`w-3 h-3 rounded-full mr-3 ${isPositive ? 'bg-green-500' : 'bg-red-500'}`}></div>
                                     <span className="text-sm font-medium text-gray-700">
-                                        {item.period || item.date || `Period ${index + 1}`}
+                                        {item.period}
                                     </span>
                                 </div>
                                 <div className="flex items-center space-x-3">
                                     <span className={`text-sm font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                                        {typeof value === 'number' ? value.toFixed(1) : value}
-                                        {item.health_score ? '/100' : '%'}
+                                        {item.value.toFixed(1)}
                                     </span>
-                                    {item.prediction_count && (
+                                    {item.predictionCount > 0 && (
                                         <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
-                                            {item.prediction_count} predictions
+                                            {item.predictionCount} predictions
                                         </span>
                                     )}
                                 </div>
@@ -361,10 +425,10 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * ENHANCED: Factors Chart with better visualization
+     * FIXED: Factors Chart with safe data handling
      */
-    const FactorsChart = ({ data, title = "Top Risk Factors" }) => {
-        const factorsData = data || [];
+    const FactorsChart = ({ data: chartData, title = "Top Risk Factors" }) => {
+        const factorsData = safeExtractData(chartData, '', []);
 
         if (!factorsData || factorsData.length === 0) {
             return (
@@ -383,9 +447,16 @@ const AnalyticsTab = () => {
             );
         }
 
-        const maxImpact = Math.max(...factorsData.map(item =>
-            item.average_impact || item.impact || item.contribution_percentage || 0
-        ));
+        const processedData = factorsData.map(item => ({
+            factor: safeExtractString(item, 'factor', safeExtractString(item, 'name', 'Unknown Factor')),
+            impact: safeExtractValue(item, 'average_impact',
+                safeExtractValue(item, 'impact',
+                    safeExtractValue(item, 'contribution_percentage', 0))),
+            impactLevel: safeExtractString(item, 'impact_level', 'Medium'),
+            explanation: safeExtractString(item, 'explanation', safeExtractString(item, 'description', 'Factor analysis'))
+        }));
+
+        const maxImpact = Math.max(...processedData.map(item => item.impact));
 
         return (
             <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
@@ -395,15 +466,13 @@ const AnalyticsTab = () => {
                         <h3 className="text-lg font-semibold">{title}</h3>
                     </div>
                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        Top {factorsData.length}
+                        Top {processedData.length}
                     </span>
                 </div>
 
                 <div className="space-y-4">
-                    {factorsData.slice(0, 8).map((item, index) => {
-                        const impact = item.average_impact || item.impact || item.contribution_percentage || 0;
-                        const impactValue = typeof impact === 'number' ? impact : 0;
-                        const percentage = maxImpact > 0 ? (impactValue / maxImpact) * 100 : 0;
+                    {processedData.slice(0, 8).map((item, index) => {
+                        const percentage = maxImpact > 0 ? (item.impact / maxImpact) * 100 : 0;
 
                         const impactColors = {
                             'High': {
@@ -429,8 +498,7 @@ const AnalyticsTab = () => {
                             }
                         };
 
-                        const impactLevel = item.impact_level || 'Medium';
-                        const colors = impactColors[impactLevel] || impactColors.Medium;
+                        const colors = impactColors[item.impactLevel] || impactColors.Medium;
 
                         return (
                             <div key={index} className="group hover:shadow-md transition-all duration-200 border border-gray-200 rounded-lg p-4 bg-gradient-to-r from-gray-50 to-white">
@@ -441,19 +509,19 @@ const AnalyticsTab = () => {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-semibold text-gray-900 truncate">
-                                                {item.factor || item.name}
+                                                {item.factor}
                                             </div>
                                             <div className="text-xs text-gray-500 mt-1 line-clamp-2">
-                                                {item.explanation || item.description || 'Risk factor analysis'}
+                                                {item.explanation}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="text-right ml-4 flex flex-col items-end">
                                         <div className="text-xl font-bold text-indigo-600 mb-1">
-                                            {impactValue.toFixed(1)}%
+                                            {(item.impact * 100).toFixed(1)}%
                                         </div>
                                         <span className={`px-3 py-1 text-xs font-medium rounded-full border ${colors.text} ${colors.bgLight} ${colors.border}`}>
-                                            {impactLevel}
+                                            {item.impactLevel}
                                         </span>
                                     </div>
                                 </div>
@@ -482,12 +550,15 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * ENHANCED: Summary insights component
+     * FIXED: Summary insights component with safe data handling
      */
-    const SummaryInsightsCard = ({ data }) => {
-        if (!data?.summary_insights) return null;
+    const SummaryInsightsCard = ({ data: insightsData }) => {
+        const summaryInsights = safeExtractData(insightsData, 'summary_insights', null);
 
-        const insights = data.summary_insights;
+        if (!summaryInsights) return null;
+
+        const trendDirection = safeExtractString(summaryInsights, 'trend_direction', 'stable');
+        const riskStability = safeExtractString(summaryInsights, 'risk_stability', 'stable');
 
         return (
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-200">
@@ -500,15 +571,15 @@ const AnalyticsTab = () => {
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-700">Risk Trend:</span>
                             <div className="flex items-center">
-                                <div className={`w-2 h-2 rounded-full mr-2 ${insights.trend_direction === 'increasing' ? 'bg-red-500' :
-                                        insights.trend_direction === 'decreasing' ? 'bg-green-500' :
+                                <div className={`w-2 h-2 rounded-full mr-2 ${trendDirection === 'increasing' ? 'bg-red-500' :
+                                        trendDirection === 'decreasing' ? 'bg-green-500' :
                                             'bg-yellow-500'
                                     }`}></div>
-                                <span className={`text-sm font-bold capitalize ${insights.trend_direction === 'increasing' ? 'text-red-600' :
-                                        insights.trend_direction === 'decreasing' ? 'text-green-600' :
+                                <span className={`text-sm font-bold capitalize ${trendDirection === 'increasing' ? 'text-red-600' :
+                                        trendDirection === 'decreasing' ? 'text-green-600' :
                                             'text-yellow-600'
                                     }`}>
-                                    {insights.trend_direction || 'Stable'}
+                                    {trendDirection}
                                 </span>
                             </div>
                         </div>
@@ -516,11 +587,11 @@ const AnalyticsTab = () => {
                     <div className="bg-white p-4 rounded-lg shadow-sm border">
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-700">Risk Stability:</span>
-                            <span className={`text-sm font-bold capitalize ${insights.risk_stability === 'volatile' ? 'text-red-600' :
-                                    insights.risk_stability === 'moderate' ? 'text-yellow-600' :
+                            <span className={`text-sm font-bold capitalize ${riskStability === 'volatile' ? 'text-red-600' :
+                                    riskStability === 'moderate' ? 'text-yellow-600' :
                                         'text-green-600'
                                 }`}>
-                                {insights.risk_stability || 'Stable'}
+                                {riskStability}
                             </span>
                         </div>
                     </div>
@@ -530,7 +601,7 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * ENHANCED: Render analytics content with data
+     * FIXED: Render analytics content with safe data handling
      */
     const renderAnalyticsContent = () => {
         if (!data || data.isEmpty) {
@@ -539,10 +610,20 @@ const AnalyticsTab = () => {
 
         console.log('[AnalyticsTab] Rendering with data:', data);
 
+        // Safe data extraction
         const keyMetrics = data.key_metrics || {};
-        const totalPredictions = keyMetrics.total_predictions || data.totalPredictions || 0;
-        const avgRiskScore = keyMetrics.average_risk_score || 0;
-        const healthScore = keyMetrics.health_score || (100 - (avgRiskScore * 100));
+        const totalPredictions = safeExtractValue(keyMetrics, 'total_predictions', safeExtractValue(data, 'totalPredictions', 0));
+        const avgRiskScore = safeExtractValue(keyMetrics, 'average_risk_score', 0);
+        const healthScore = safeExtractValue(keyMetrics, 'health_score', 100 - (avgRiskScore * 100));
+        const extractedDataQuality = safeExtractString(keyMetrics, 'data_quality', safeExtractString(data, 'dataQuality', 'Unknown'));
+
+        // Safe array extractions
+        const riskDistribution = safeExtractData(data, 'key_metrics.risk_distribution',
+            safeExtractData(data, 'riskDistribution', []));
+        const trendAnalysis = safeExtractData(data, 'risk_trend_analysis',
+            safeExtractData(data, 'monthlyTrends', []));
+        const factorContribution = safeExtractData(data, 'factor_contribution',
+            safeExtractData(data, 'topRiskFactors', []));
 
         return (
             <div className="space-y-8">
@@ -593,7 +674,7 @@ const AnalyticsTab = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-sm font-medium text-purple-100 mb-1">Data Quality</h3>
-                                <p className="text-2xl font-bold">{dataQuality}</p>
+                                <p className="text-2xl font-bold">{extractedDataQuality}</p>
                                 <p className="text-xs text-purple-200 mt-1">Analysis grade</p>
                             </div>
                             <div className="bg-purple-400 bg-opacity-30 p-3 rounded-lg">
@@ -609,20 +690,20 @@ const AnalyticsTab = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Risk Distribution Chart */}
                     <RiskDistributionChart
-                        data={data.riskDistribution || data.key_metrics?.risk_distribution || []}
+                        data={riskDistribution}
                         title="Risk Distribution Analysis"
                     />
 
                     {/* Trends Chart */}
                     <TrendsChart
-                        data={data.risk_trend_analysis || data.monthlyTrends || []}
+                        data={trendAnalysis}
                         title="Performance Trends"
                     />
                 </div>
 
                 {/* Factor Analysis - Full Width */}
                 <FactorsChart
-                    data={data.factor_contribution || data.topRiskFactors || []}
+                    data={factorContribution}
                     title="Top Risk Factors Analysis"
                 />
 
@@ -641,10 +722,12 @@ const AnalyticsTab = () => {
                                 <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                                     <h4 className="font-semibold text-blue-900 mb-3">Overall Performance</h4>
                                     <div className="text-3xl font-bold text-blue-800 mb-2">
-                                        {data.peer_comparison.overall.percentile}%
+                                        {safeExtractValue(data.peer_comparison.overall, 'percentile', 50)}%
                                     </div>
                                     <p className="text-sm text-blue-700">
-                                        You perform <strong className="text-blue-900">{data.peer_comparison.overall.comparison}</strong> than this percentile of peers
+                                        You perform <strong className="text-blue-900">
+                                            {safeExtractString(data.peer_comparison.overall, 'comparison', 'average')}
+                                        </strong> than this percentile of peers
                                     </p>
                                 </div>
                             )}
@@ -652,7 +735,7 @@ const AnalyticsTab = () => {
                                 <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
                                     <h4 className="font-semibold text-green-900 mb-3">Industry Benchmark</h4>
                                     <div className="text-2xl font-bold text-green-800 mb-2">
-                                        {data.peer_comparison.industry_benchmark.performance_rating}
+                                        {safeExtractString(data.peer_comparison.industry_benchmark, 'performance_rating', 'Good')}
                                     </div>
                                     <p className="text-sm text-green-700">Performance Rating</p>
                                 </div>
@@ -726,7 +809,7 @@ const AnalyticsTab = () => {
                             <span>⚡ Advanced Insights</span>
                         </div>
                         <div className="flex items-center space-x-4 text-sm">
-                            <span>Quality: <strong>{dataQuality}</strong></span>
+                            <span>Quality: <strong>{extractedDataQuality}</strong></span>
                             <div className="px-3 py-1 bg-white/10 rounded-full">
                                 FinDistress AI Analytics
                             </div>

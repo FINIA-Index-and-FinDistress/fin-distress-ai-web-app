@@ -21,9 +21,17 @@ const DashboardCharts = ({ data }) => {
     const processedData = useMemo(() => {
         if (!data) return null;
 
+        // ✅ Transform risk_distribution into array format for chart
+        const riskDistRaw = data.risk_distribution || {};
+        const distressDistribution = Object.entries(riskDistRaw).map(([key, value]) => ({
+            name: key,
+            value: value.count,
+            percentage: value.percentage,
+        }));
+
         return {
-            // User prediction distribution
-            distressDistribution: data.distressDistribution || [],
+            // ✅ Transformed data for DistressDistributionChart
+            distressDistribution,
 
             // Market-wide distribution from training data
             overallDistressDistribution: data.overallDistressDistribution || [],

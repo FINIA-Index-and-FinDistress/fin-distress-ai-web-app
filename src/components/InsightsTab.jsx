@@ -5,8 +5,7 @@ import { useNotifications } from '../context/NotificationContext';
 import usePredictionData from "../hooks/usePredictionData";
 
 /**
- * FIXED Insights Tab with proper data handling
- * Now correctly processes insights endpoint data and displays all sections
+ * FIXED Insights Tab with proper data handling and no object rendering
  */
 const InsightsTab = () => {
     const { data, isLoading, error, refreshData, hasData, dataQuality } = usePredictionData('insights');
@@ -33,11 +32,89 @@ const InsightsTab = () => {
     useEffect(() => {
         if (data) {
             console.log('[InsightsTab] Current data structure:', data);
-            console.log('[InsightsTab] Recommendations:', data.actionable_recommendations);
-            console.log('[InsightsTab] Risk alerts:', data.risk_alerts);
-            console.log('[InsightsTab] Market context:', data.market_context);
         }
     }, [data]);
+
+    /**
+     * Safe data extraction helper
+     */
+    const safeExtractData = useCallback((data, path, fallback = []) => {
+        try {
+            const keys = path.split('.');
+            let current = data;
+            for (const key of keys) {
+                if (current && typeof current === 'object' && key in current) {
+                    current = current[key];
+                } else {
+                    return fallback;
+                }
+            }
+            return Array.isArray(current) ? current : fallback;
+        } catch (e) {
+            console.warn(`Failed to extract path ${path}:`, e);
+            return fallback;
+        }
+    }, []);
+
+    /**
+     * Safe value extraction helper
+     */
+    const safeExtractValue = useCallback((data, path, fallback = 0) => {
+        try {
+            const keys = path.split('.');
+            let current = data;
+            for (const key of keys) {
+                if (current && typeof current === 'object' && key in current) {
+                    current = current[key];
+                } else {
+                    return fallback;
+                }
+            }
+            return typeof current === 'number' ? current : fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }, []);
+
+    /**
+     * Safe string extraction helper
+     */
+    const safeExtractString = useCallback((data, path, fallback = '') => {
+        try {
+            const keys = path.split('.');
+            let current = data;
+            for (const key of keys) {
+                if (current && typeof current === 'object' && key in current) {
+                    current = current[key];
+                } else {
+                    return fallback;
+                }
+            }
+            return typeof current === 'string' ? current : String(current || fallback);
+        } catch (e) {
+            return fallback;
+        }
+    }, []);
+
+    /**
+     * Safe object extraction helper
+     */
+    const safeExtractObject = useCallback((data, path, fallback = null) => {
+        try {
+            const keys = path.split('.');
+            let current = data;
+            for (const key of keys) {
+                if (current && typeof current === 'object' && key in current) {
+                    current = current[key];
+                } else {
+                    return fallback;
+                }
+            }
+            return current && typeof current === 'object' ? current : fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }, []);
 
     /**
      * Render authentication requirement notice
@@ -78,7 +155,9 @@ const InsightsTab = () => {
             <div className="text-center p-8 bg-red-50 rounded-xl border border-red-200 max-w-md">
                 <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-red-800 mb-2">Insights Unavailable</h3>
-                <p className="text-red-700 text-sm mb-4">{error?.message || 'Failed to load insights'}</p>
+                <p className="text-red-700 text-sm mb-4">
+                    {typeof error === 'string' ? error : error?.message || 'Failed to load insights'}
+                </p>
                 <button
                     onClick={handleRefresh}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
@@ -113,10 +192,12 @@ const InsightsTab = () => {
     );
 
     /**
-     * FIXED: Recommendations Component
+     * FIXED: Recommendations Component with safe data handling
      */
     const RecommendationsSection = ({ recommendations }) => {
-        if (!recommendations || recommendations.length === 0) {
+        const safeRecommendations = safeExtractData({ recommendations }, 'recommendations', []);
+
+        if (!safeRecommendations || safeRecommendations.length === 0) {
             return (
                 <div className="bg-white rounded-xl shadow-lg border p-6">
                     <div className="flex items-center mb-4">
@@ -158,62 +239,73 @@ const InsightsTab = () => {
                     <Target className="h-6 w-6 text-indigo-600 mr-2" />
                     <h3 className="text-xl font-semibold text-gray-900">Actionable Recommendations</h3>
                     <span className="ml-2 px-2 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
-                        {recommendations.length}
+                        {safeRecommendations.length}
                     </span>
                 </div>
                 <div className="space-y-4">
-                    {recommendations.map((rec, index) => (
-                        <div
-                            key={index}
-                            className={`border-l-4 p-5 rounded-r-lg transition-all hover:shadow-md ${priorityColors[rec.priority] || priorityColors.Medium}`}
-                        >
-                            <div className="flex items-start justify-between mb-3">
-                                <div className="flex items-center">
-                                    {priorityIcons[rec.priority] || priorityIcons.Medium}
-                                    <h4 className="font-semibold text-gray-900 ml-2 text-lg">{rec.title}</h4>
-                                </div>
-                                <span className={`px-3 py-1 text-xs font-medium rounded-full ${priorityBadges[rec.priority] || priorityBadges.Medium}`}>
-                                    {rec.priority} Priority
-                                </span>
-                            </div>
+                    {safeRecommendations.map((rec, index) => {
+                        const title = safeExtractString(rec, 'title', `Recommendation ${index + 1}`);
+                        const priority = safeExtractString(rec, 'priority', 'Medium');
+                        const action = safeExtractString(rec, 'action', 'Action details not available');
+                        const reason = safeExtractString(rec, 'reason', 'Reason not specified');
+                        const implementation = safeExtractString(rec, 'implementation', '');
+                        const expectedImpact = safeExtractString(rec, 'expected_impact', '');
 
-                            <div className="space-y-3 text-sm">
-                                <div className="bg-white/70 p-3 rounded-lg border">
-                                    <p className="font-medium text-gray-800 mb-1">Action Required:</p>
-                                    <p className="text-gray-700">{rec.action}</p>
-                                </div>
-
-                                <div className="bg-white/70 p-3 rounded-lg border">
-                                    <p className="font-medium text-gray-800 mb-1">Why This Matters:</p>
-                                    <p className="text-gray-700">{rec.reason}</p>
+                        return (
+                            <div
+                                key={index}
+                                className={`border-l-4 p-5 rounded-r-lg transition-all hover:shadow-md ${priorityColors[priority] || priorityColors.Medium}`}
+                            >
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center">
+                                        {priorityIcons[priority] || priorityIcons.Medium}
+                                        <h4 className="font-semibold text-gray-900 ml-2 text-lg">{title}</h4>
+                                    </div>
+                                    <span className={`px-3 py-1 text-xs font-medium rounded-full ${priorityBadges[priority] || priorityBadges.Medium}`}>
+                                        {priority} Priority
+                                    </span>
                                 </div>
 
-                                {rec.implementation && (
+                                <div className="space-y-3 text-sm">
                                     <div className="bg-white/70 p-3 rounded-lg border">
-                                        <p className="font-medium text-gray-800 mb-1">Implementation Steps:</p>
-                                        <p className="text-gray-700">{rec.implementation}</p>
+                                        <p className="font-medium text-gray-800 mb-1">Action Required:</p>
+                                        <p className="text-gray-700">{action}</p>
                                     </div>
-                                )}
 
-                                {rec.expected_impact && (
-                                    <div className="bg-white/70 p-3 rounded-lg border border-green-200">
-                                        <p className="font-medium text-green-800 mb-1">Expected Impact:</p>
-                                        <p className="text-green-700">{rec.expected_impact}</p>
+                                    <div className="bg-white/70 p-3 rounded-lg border">
+                                        <p className="font-medium text-gray-800 mb-1">Why This Matters:</p>
+                                        <p className="text-gray-700">{reason}</p>
                                     </div>
-                                )}
+
+                                    {implementation && (
+                                        <div className="bg-white/70 p-3 rounded-lg border">
+                                            <p className="font-medium text-gray-800 mb-1">Implementation Steps:</p>
+                                            <p className="text-gray-700">{implementation}</p>
+                                        </div>
+                                    )}
+
+                                    {expectedImpact && (
+                                        <div className="bg-white/70 p-3 rounded-lg border border-green-200">
+                                            <p className="font-medium text-green-800 mb-1">Expected Impact:</p>
+                                            <p className="text-green-700">{expectedImpact}</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         );
     };
 
     /**
-     * FIXED: Risk Alerts Component
+     * FIXED: Risk Alerts Component with safe data handling
      */
     const RiskAlertsSection = ({ alerts }) => {
-        if (!alerts || alerts.length === 0) {
+        const safeAlerts = safeExtractData({ alerts }, 'alerts', []);
+
+        if (!safeAlerts || safeAlerts.length === 0) {
             return (
                 <div className="bg-white rounded-xl shadow-lg border p-6">
                     <div className="flex items-center mb-4">
@@ -249,51 +341,62 @@ const InsightsTab = () => {
                     <AlertTriangle className="h-6 w-6 text-orange-600 mr-2" />
                     <h3 className="text-xl font-semibold text-gray-900">Risk Alerts</h3>
                     <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
-                        {alerts.length} Active
+                        {safeAlerts.length} Active
                     </span>
                 </div>
                 <div className="space-y-4">
-                    {alerts.map((alert, index) => (
-                        <div
-                            key={index}
-                            className={`border-l-4 p-5 rounded-r-lg transition-all hover:shadow-md ${severityColors[alert.severity] || severityColors.Medium}`}
-                        >
-                            <div className="flex items-start justify-between mb-3">
-                                <div className="flex items-center">
-                                    {severityIcons[alert.severity] || severityIcons.Medium}
-                                    <h4 className="font-semibold ml-2 text-lg">{alert.title}</h4>
+                    {safeAlerts.map((alert, index) => {
+                        const title = safeExtractString(alert, 'title', `Risk Alert ${index + 1}`);
+                        const severity = safeExtractString(alert, 'severity', 'Medium');
+                        const message = safeExtractString(alert, 'message', 'Alert details not available');
+                        const impact = safeExtractString(alert, 'impact', 'Impact assessment not available');
+                        const action = safeExtractString(alert, 'action', 'No action specified');
+                        const timeline = safeExtractString(alert, 'timeline', 'Timeline not specified');
+
+                        return (
+                            <div
+                                key={index}
+                                className={`border-l-4 p-5 rounded-r-lg transition-all hover:shadow-md ${severityColors[severity] || severityColors.Medium}`}
+                            >
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center">
+                                        {severityIcons[severity] || severityIcons.Medium}
+                                        <h4 className="font-semibold ml-2 text-lg">{title}</h4>
+                                    </div>
+                                    <span className="text-xs font-medium px-3 py-1 rounded-full bg-white/70 border">
+                                        {severity} Risk
+                                    </span>
                                 </div>
-                                <span className="text-xs font-medium px-3 py-1 rounded-full bg-white/70 border">
-                                    {alert.severity} Risk
-                                </span>
+                                <p className="text-sm mb-4 font-medium">{message}</p>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                                    <div className="bg-white/70 p-3 rounded border">
+                                        <p className="font-semibold mb-1">Impact:</p>
+                                        <p>{impact}</p>
+                                    </div>
+                                    <div className="bg-white/70 p-3 rounded border">
+                                        <p className="font-semibold mb-1">Action Required:</p>
+                                        <p>{action}</p>
+                                    </div>
+                                    <div className="bg-white/70 p-3 rounded border">
+                                        <p className="font-semibold mb-1">Timeline:</p>
+                                        <p className="font-medium text-red-600">{timeline}</p>
+                                    </div>
+                                </div>
                             </div>
-                            <p className="text-sm mb-4 font-medium">{alert.message}</p>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                                <div className="bg-white/70 p-3 rounded border">
-                                    <p className="font-semibold mb-1">Impact:</p>
-                                    <p>{alert.impact}</p>
-                                </div>
-                                <div className="bg-white/70 p-3 rounded border">
-                                    <p className="font-semibold mb-1">Action Required:</p>
-                                    <p>{alert.action}</p>
-                                </div>
-                                <div className="bg-white/70 p-3 rounded border">
-                                    <p className="font-semibold mb-1">Timeline:</p>
-                                    <p className="font-medium text-red-600">{alert.timeline}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         );
     };
 
     /**
-     * FIXED: Market Context Component
+     * FIXED: Market Context Component with safe data handling
      */
     const MarketContextSection = ({ marketContext }) => {
-        if (!marketContext || marketContext.length === 0) {
+        const safeMarketContext = safeExtractData({ marketContext }, 'marketContext', []);
+
+        if (!safeMarketContext || safeMarketContext.length === 0) {
             return (
                 <div className="bg-white rounded-xl shadow-lg border p-6">
                     <div className="flex items-center mb-4">
@@ -320,42 +423,52 @@ const InsightsTab = () => {
                     <TrendingUp className="h-6 w-6 text-purple-600 mr-2" />
                     <h3 className="text-xl font-semibold text-gray-900">Market Context</h3>
                     <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
-                        {marketContext.length} Trends
+                        {safeMarketContext.length} Trends
                     </span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {marketContext.map((context, index) => (
-                        <div key={index} className="p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-md transition-all">
-                            <div className="flex items-center justify-between mb-3">
-                                <h4 className="font-semibold text-gray-900 text-lg">{context.trend}</h4>
-                                <span className={`px-3 py-1 text-xs font-medium rounded-full border ${impactColors[context.impact] || impactColors.Medium}`}>
-                                    {context.impact} Impact
-                                </span>
-                            </div>
-                            <p className="text-sm text-gray-700 mb-4 leading-relaxed">{context.description}</p>
-                            <div className="space-y-2 text-xs">
-                                <div className="bg-white p-3 rounded border">
-                                    <p className="font-semibold text-gray-800 mb-1">📋 Recommendation:</p>
-                                    <p className="text-gray-700">{context.recommendation}</p>
+                    {safeMarketContext.map((context, index) => {
+                        const trend = safeExtractString(context, 'trend', `Market Trend ${index + 1}`);
+                        const impact = safeExtractString(context, 'impact', 'Medium');
+                        const description = safeExtractString(context, 'description', 'Description not available');
+                        const recommendation = safeExtractString(context, 'recommendation', 'No recommendation available');
+                        const source = safeExtractString(context, 'source', 'Source not specified');
+
+                        return (
+                            <div key={index} className="p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-md transition-all">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="font-semibold text-gray-900 text-lg">{trend}</h4>
+                                    <span className={`px-3 py-1 text-xs font-medium rounded-full border ${impactColors[impact] || impactColors.Medium}`}>
+                                        {impact} Impact
+                                    </span>
                                 </div>
-                                <div className="bg-white p-2 rounded border">
-                                    <p className="font-medium text-gray-600">
-                                        <span className="text-gray-500">Source:</span> {context.source}
-                                    </p>
+                                <p className="text-sm text-gray-700 mb-4 leading-relaxed">{description}</p>
+                                <div className="space-y-2 text-xs">
+                                    <div className="bg-white p-3 rounded border">
+                                        <p className="font-semibold text-gray-800 mb-1">📋 Recommendation:</p>
+                                        <p className="text-gray-700">{recommendation}</p>
+                                    </div>
+                                    <div className="bg-white p-2 rounded border">
+                                        <p className="font-medium text-gray-600">
+                                            <span className="text-gray-500">Source:</span> {source}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         );
     };
 
     /**
-     * FIXED: Key Factors Analysis Component
+     * FIXED: Key Factors Analysis Component with safe data handling
      */
     const KeyFactorsSection = ({ factors }) => {
-        if (!factors || factors.length === 0) {
+        const safeFactors = safeExtractData({ factors }, 'factors', []);
+
+        if (!safeFactors || safeFactors.length === 0) {
             return (
                 <div className="bg-white rounded-xl shadow-lg border p-6">
                     <div className="flex items-center mb-4">
@@ -382,58 +495,68 @@ const InsightsTab = () => {
                     <Zap className="h-6 w-6 text-blue-600 mr-2" />
                     <h3 className="text-xl font-semibold text-gray-900">Key Risk Factors Analysis</h3>
                     <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                        Top {factors.length}
+                        Top {safeFactors.length}
                     </span>
                 </div>
                 <div className="space-y-4">
-                    {factors.map((factor, index) => (
-                        <div key={index} className="bg-gradient-to-r from-gray-50 to-slate-50 p-5 rounded-lg border border-gray-200 hover:shadow-md transition-all">
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center">
-                                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-3">
-                                        {index + 1}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="text-lg font-semibold text-gray-900">{factor.factor}</div>
-                                        <div className="text-sm text-gray-600 mt-1">{factor.explanation}</div>
-                                    </div>
-                                </div>
-                                <div className="text-right ml-4">
-                                    <div className="text-xl font-bold text-blue-600 mb-1">
-                                        {((factor.impact || 0) * 100).toFixed(1)}%
-                                    </div>
-                                    <span className={`px-3 py-1 text-xs font-medium rounded-full border ${levelColors[factor.level] || levelColors.Medium}`}>
-                                        {factor.level} Impact
-                                    </span>
-                                </div>
-                            </div>
+                    {safeFactors.map((factor, index) => {
+                        const factorName = safeExtractString(factor, 'factor', `Factor ${index + 1}`);
+                        const impact = safeExtractValue(factor, 'impact', 0);
+                        const level = safeExtractString(factor, 'level', 'Medium');
+                        const explanation = safeExtractString(factor, 'explanation', 'Factor analysis not available');
+                        const frequency = safeExtractValue(factor, 'frequency', 0);
 
-                            <div className="mt-4">
-                                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                                    <span>Impact Level</span>
-                                    <span>Frequency: {factor.frequency || 'N/A'}</span>
+                        return (
+                            <div key={index} className="bg-gradient-to-r from-gray-50 to-slate-50 p-5 rounded-lg border border-gray-200 hover:shadow-md transition-all">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center">
+                                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-3">
+                                            {index + 1}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-lg font-semibold text-gray-900">{factorName}</div>
+                                            <div className="text-sm text-gray-600 mt-1">{explanation}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right ml-4">
+                                        <div className="text-xl font-bold text-blue-600 mb-1">
+                                            {(impact * 100).toFixed(1)}%
+                                        </div>
+                                        <span className={`px-3 py-1 text-xs font-medium rounded-full border ${levelColors[level] || levelColors.Medium}`}>
+                                            {level} Impact
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3">
-                                    <div
-                                        className={`h-3 rounded-full transition-all duration-500 ${factor.level === 'High' ? 'bg-red-500' :
-                                                factor.level === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'
-                                            }`}
-                                        style={{ width: `${Math.min(100, Math.max(10, (factor.impact || 0) * 100))}%` }}
-                                    ></div>
+
+                                <div className="mt-4">
+                                    <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                                        <span>Impact Level</span>
+                                        <span>Frequency: {frequency || 'N/A'}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-3">
+                                        <div
+                                            className={`h-3 rounded-full transition-all duration-500 ${level === 'High' ? 'bg-red-500' :
+                                                    level === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'
+                                                }`}
+                                            style={{ width: `${Math.min(100, Math.max(10, impact * 100))}%` }}
+                                        ></div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         );
     };
 
     /**
-     * FIXED: Insights Summary Component
+     * FIXED: Insights Summary Component with safe data handling
      */
     const InsightsSummarySection = ({ summary }) => {
-        if (!summary) return null;
+        const safeSummary = safeExtractObject({ summary }, 'summary', null);
+
+        if (!safeSummary) return null;
 
         const alertLevelColors = {
             'Critical': 'bg-red-100 text-red-800 border-red-200',
@@ -444,6 +567,13 @@ const InsightsTab = () => {
             'Error': 'bg-red-100 text-red-800 border-red-200'
         };
 
+        const totalInsights = safeExtractValue(safeSummary, 'total_insights', 0);
+        const criticalRisks = safeExtractValue(safeSummary, 'critical_risks', 0);
+        const recommendations = safeExtractValue(safeSummary, 'recommendations', 0);
+        const alertLevel = safeExtractString(safeSummary, 'alert_level', 'None');
+        const overallRiskTrend = safeExtractString(safeSummary, 'overall_risk_trend', '');
+        const healthScore = safeExtractValue(safeSummary, 'health_score', 0);
+
         return (
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg border border-blue-200 p-6 mb-6">
                 <div className="flex items-center mb-4">
@@ -452,49 +582,49 @@ const InsightsTab = () => {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-4 bg-white rounded-lg shadow-sm border">
-                        <div className="text-3xl font-bold text-blue-900 mb-1">{summary.total_insights || 0}</div>
+                        <div className="text-3xl font-bold text-blue-900 mb-1">{totalInsights}</div>
                         <div className="text-sm text-blue-700">Total Insights</div>
                     </div>
                     <div className="text-center p-4 bg-white rounded-lg shadow-sm border">
-                        <div className="text-3xl font-bold text-red-900 mb-1">{summary.critical_risks || 0}</div>
+                        <div className="text-3xl font-bold text-red-900 mb-1">{criticalRisks}</div>
                         <div className="text-sm text-red-700">Critical Risks</div>
                     </div>
                     <div className="text-center p-4 bg-white rounded-lg shadow-sm border">
-                        <div className="text-3xl font-bold text-green-900 mb-1">{summary.recommendations || 0}</div>
+                        <div className="text-3xl font-bold text-green-900 mb-1">{recommendations}</div>
                         <div className="text-sm text-green-700">Recommendations</div>
                     </div>
                     <div className="text-center p-4 bg-white rounded-lg shadow-sm border">
-                        <div className={`text-xl font-bold px-3 py-2 rounded-lg border ${alertLevelColors[summary.alert_level] || alertLevelColors.None}`}>
-                            {summary.alert_level || 'None'}
+                        <div className={`text-xl font-bold px-3 py-2 rounded-lg border ${alertLevelColors[alertLevel] || alertLevelColors.None}`}>
+                            {alertLevel}
                         </div>
                         <div className="text-sm text-gray-700 mt-1">Alert Level</div>
                     </div>
                 </div>
 
-                {(summary.overall_risk_trend || summary.health_score) && (
+                {(overallRiskTrend || healthScore > 0) && (
                     <div className="mt-6 p-4 bg-white rounded-lg border">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {summary.overall_risk_trend && (
+                            {overallRiskTrend && (
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-medium text-gray-700">Risk Trend:</span>
                                     <div className="flex items-center">
-                                        <TrendingUp className={`h-4 w-4 mr-1 ${summary.overall_risk_trend === 'increasing' ? 'text-red-600' :
-                                                summary.overall_risk_trend === 'decreasing' ? 'text-green-600' :
+                                        <TrendingUp className={`h-4 w-4 mr-1 ${overallRiskTrend === 'increasing' ? 'text-red-600' :
+                                                overallRiskTrend === 'decreasing' ? 'text-green-600' :
                                                     'text-gray-600'
                                             }`} />
-                                        <span className={`text-sm font-medium capitalize ${summary.overall_risk_trend === 'increasing' ? 'text-red-600' :
-                                                summary.overall_risk_trend === 'decreasing' ? 'text-green-600' :
+                                        <span className={`text-sm font-medium capitalize ${overallRiskTrend === 'increasing' ? 'text-red-600' :
+                                                overallRiskTrend === 'decreasing' ? 'text-green-600' :
                                                     'text-gray-600'
                                             }`}>
-                                            {summary.overall_risk_trend}
+                                            {overallRiskTrend}
                                         </span>
                                     </div>
                                 </div>
                             )}
-                            {summary.health_score && (
+                            {healthScore > 0 && (
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-medium text-gray-700">Health Score:</span>
-                                    <span className="text-sm font-bold text-blue-600">{summary.health_score}/100</span>
+                                    <span className="text-sm font-bold text-blue-600">{healthScore}/100</span>
                                 </div>
                             )}
                         </div>
@@ -505,7 +635,7 @@ const InsightsTab = () => {
     };
 
     /**
-     * FIXED: Render insights content with data
+     * FIXED: Render insights content with safe data handling
      */
     const renderInsightsContent = () => {
         if (!data || data.isEmpty) {
@@ -514,53 +644,59 @@ const InsightsTab = () => {
 
         console.log('[InsightsTab] Rendering with data:', data);
 
+        // Safe data extraction
+        const actionableRecommendations = safeExtractData(data, 'actionable_recommendations',
+            safeExtractData(data, 'recommendations', []));
+        const riskAlerts = safeExtractData(data, 'risk_alerts', []);
+        const marketContext = safeExtractData(data, 'market_context',
+            safeExtractData(data, 'marketTrends', []));
+        const keyFactorsAnalysis = safeExtractData(data, 'key_factors_analysis', []);
+        const insightSummary = safeExtractObject(data, 'insight_summary', null);
+        const keyInsights = safeExtractData(data, 'keyInsights', []);
+
         return (
             <div className="space-y-6">
                 {/* Insights Summary */}
-                <InsightsSummarySection summary={data.insight_summary} />
+                <InsightsSummarySection summary={insightSummary} />
 
                 {/* Main Content */}
                 <div className="space-y-6">
                     {/* Recommendations */}
-                    <RecommendationsSection
-                        recommendations={data.actionable_recommendations || data.recommendations || []}
-                    />
+                    <RecommendationsSection recommendations={actionableRecommendations} />
 
                     {/* Risk Alerts */}
-                    <RiskAlertsSection
-                        alerts={data.risk_alerts || []}
-                    />
+                    <RiskAlertsSection alerts={riskAlerts} />
 
                     {/* Market Context and Key Factors Grid */}
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                        <MarketContextSection
-                            marketContext={data.market_context || data.marketTrends || []}
-                        />
-
-                        <KeyFactorsSection
-                            factors={data.key_factors_analysis || []}
-                        />
+                        <MarketContextSection marketContext={marketContext} />
+                        <KeyFactorsSection factors={keyFactorsAnalysis} />
                     </div>
                 </div>
 
                 {/* Key Insights Text */}
-                {data.keyInsights && data.keyInsights.length > 0 && (
+                {keyInsights && keyInsights.length > 0 && (
                     <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl shadow-lg border border-indigo-200 p-6">
                         <div className="flex items-center mb-4">
                             <Lightbulb className="h-6 w-6 text-indigo-600 mr-2" />
                             <h3 className="text-xl font-semibold text-indigo-900">Key Insights</h3>
                         </div>
                         <div className="space-y-3">
-                            {data.keyInsights.map((insight, index) => (
-                                <div key={index} className="bg-white p-4 rounded-lg border border-indigo-200 shadow-sm">
-                                    <div className="flex items-start">
-                                        <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-xs mr-3 mt-0.5 flex-shrink-0">
-                                            {index + 1}
+                            {keyInsights.map((insight, index) => {
+                                const insightText = typeof insight === 'string' ? insight :
+                                    safeExtractString(insight, 'text', 'Insight not available');
+
+                                return (
+                                    <div key={index} className="bg-white p-4 rounded-lg border border-indigo-200 shadow-sm">
+                                        <div className="flex items-start">
+                                            <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-xs mr-3 mt-0.5 flex-shrink-0">
+                                                {index + 1}
+                                            </div>
+                                            <p className="text-sm text-indigo-900 leading-relaxed">{insightText}</p>
                                         </div>
-                                        <p className="text-sm text-indigo-900 leading-relaxed">{insight}</p>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}
@@ -627,7 +763,7 @@ const InsightsTab = () => {
                             <span>🎯 Actionable Guidance</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                            <span>Quality: {dataQuality}</span>
+                            <span>Quality: {dataQuality || 'Good'}</span>
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                         </div>
                     </div>
