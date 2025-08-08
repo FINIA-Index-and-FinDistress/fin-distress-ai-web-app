@@ -17,6 +17,7 @@ import NavigationTabs from './components/NavigationTabs';
 import usePredictionData from './hooks/usePredictionData';
 import { Brain, BarChart2, Target, AlertCircle, RefreshCw, Lock, TrendingUp } from 'lucide-react';
 
+
 /**
  * Protected Route Component
  * Handles authentication checks for protected routes
@@ -638,7 +639,7 @@ const AppContent = () => {
                                     path="/analytics"
                                     element={
                                         <ProtectedRoute requiresAuth={true} setShowAuthModal={setShowAuthModal}>
-                                            <EnhancedAnalyticsTab setShowAuthModal={setShowAuthModal} />
+                                            <AnalyticsTab setShowAuthModal={setShowAuthModal} />
                                         </ProtectedRoute>
                                     }
                                 />

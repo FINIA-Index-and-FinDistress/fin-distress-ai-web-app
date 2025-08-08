@@ -96,6 +96,11 @@ const AnalyticsTab = () => {
         }
     }, []);
 
+    // FIXED: Extract data quality at component level for global access
+    const extractedDataQuality = data ?
+        safeExtractString(data, 'key_metrics.data_quality',
+            safeExtractString(data, 'dataQuality', 'Unknown')) : 'Unknown';
+
     /**
      * Render authentication requirement notice
      */
@@ -572,12 +577,12 @@ const AnalyticsTab = () => {
                             <span className="text-sm font-medium text-gray-700">Risk Trend:</span>
                             <div className="flex items-center">
                                 <div className={`w-2 h-2 rounded-full mr-2 ${trendDirection === 'increasing' ? 'bg-red-500' :
-                                        trendDirection === 'decreasing' ? 'bg-green-500' :
-                                            'bg-yellow-500'
+                                    trendDirection === 'decreasing' ? 'bg-green-500' :
+                                        'bg-yellow-500'
                                     }`}></div>
                                 <span className={`text-sm font-bold capitalize ${trendDirection === 'increasing' ? 'text-red-600' :
-                                        trendDirection === 'decreasing' ? 'text-green-600' :
-                                            'text-yellow-600'
+                                    trendDirection === 'decreasing' ? 'text-green-600' :
+                                        'text-yellow-600'
                                     }`}>
                                     {trendDirection}
                                 </span>
@@ -588,8 +593,8 @@ const AnalyticsTab = () => {
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-700">Risk Stability:</span>
                             <span className={`text-sm font-bold capitalize ${riskStability === 'volatile' ? 'text-red-600' :
-                                    riskStability === 'moderate' ? 'text-yellow-600' :
-                                        'text-green-600'
+                                riskStability === 'moderate' ? 'text-yellow-600' :
+                                    'text-green-600'
                                 }`}>
                                 {riskStability}
                             </span>
@@ -615,7 +620,6 @@ const AnalyticsTab = () => {
         const totalPredictions = safeExtractValue(keyMetrics, 'total_predictions', safeExtractValue(data, 'totalPredictions', 0));
         const avgRiskScore = safeExtractValue(keyMetrics, 'average_risk_score', 0);
         const healthScore = safeExtractValue(keyMetrics, 'health_score', 100 - (avgRiskScore * 100));
-        const extractedDataQuality = safeExtractString(keyMetrics, 'data_quality', safeExtractString(data, 'dataQuality', 'Unknown'));
 
         // Safe array extractions
         const riskDistribution = safeExtractData(data, 'key_metrics.risk_distribution',
