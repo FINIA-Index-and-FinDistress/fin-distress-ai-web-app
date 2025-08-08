@@ -1,24 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Target, Award, Building2, Shield, Loader2, TrendingUp, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Target, Award, Building2, Shield, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
+import { usePrediction } from '../../context/PredictionContext';
 
 const StatsCards = () => {
     const { addNotification } = useNotifications();
     const { authState } = useAuth();
+    const { predictions } = usePrediction();
     const [stats, setStats] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [lastUpdated, setLastUpdated] = useState(null);
     const [retryCount, setRetryCount] = useState(0);
 
-
-    // API configuration
     const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1';
 
-    /**
-     * Get auth headers
-     */
     const getAuthHeaders = useCallback(() => {
         const headers = {
             'Content-Type': 'application/json'
@@ -29,12 +26,8 @@ const StatsCards = () => {
         return headers;
     }, [authState.token]);
 
-    /**
-     * API call helper with better error handling
-     */
     const apiCall = useCallback(async (endpoint, retries = 1) => {
         let lastError;
-
         for (let attempt = 0; attempt <= retries; attempt++) {
             try {
                 const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -50,12 +43,10 @@ const StatsCards = () => {
                         errorMessage = response.statusText || errorMessage;
                     }
 
-                    // Don't retry on auth errors
                     if (response.status === 401 || response.status === 403) {
                         throw new Error(errorMessage);
                     }
 
-                    // Retry on server errors
                     if (response.status >= 500 && attempt < retries) {
                         await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
                         continue;
@@ -75,9 +66,6 @@ const StatsCards = () => {
         throw lastError;
     }, [API_BASE, getAuthHeaders]);
 
-    /**
-     * Fetch dashboard stats with better error handling
-     */
     const fetchStats = useCallback(async (showNotification = false) => {
         if (!authState.isAuthenticated) {
             setStats(getDefaultStats());
@@ -89,20 +77,20 @@ const StatsCards = () => {
         setError(null);
 
         try {
-            // Try dashboard endpoint first
             const data = await apiCall('/dashboard', 1);
 
             if (data?.mlInsights) {
                 const insights = data.mlInsights;
+
                 const transformedStats = [
                     {
                         label: 'Predictions Made',
-                        value: insights.predictions_made?.toLocaleString() || '0',
+                        value: 'Loading...',
                         icon: Target,
                         color: 'bg-blue-500',
-                        trend: insights.predictions_made > 0 ? 'Active' : 'No data',
+                        trend: 'Fetching...',
                         description: 'Total predictions processed',
-                        rawValue: insights.predictions_made || 0
+                        rawValue: 0
                     },
                     {
                         label: 'Model Accuracy',
@@ -150,7 +138,6 @@ const StatsCards = () => {
             setStats(getDefaultStats());
             setRetryCount(prev => prev + 1);
 
-            // Only show notification for user-initiated actions or critical errors
             if (showNotification) {
                 if (error.message.includes('Token has expired')) {
                     addNotification('Session expired. Please sign in again.', 'warning');
@@ -165,9 +152,6 @@ const StatsCards = () => {
         }
     }, [authState.isAuthenticated, apiCall, addNotification]);
 
-    /**
-     * Get default stats when data is unavailable
-     */
     const getDefaultStats = useCallback(() => [
         {
             label: 'Predictions Made',
@@ -207,9 +191,6 @@ const StatsCards = () => {
         }
     ], []);
 
-    /**
-     * Get progress bar width based on stat type
-     */
     const getProgressWidth = useCallback((stat) => {
         switch (stat.label) {
             case 'Model Accuracy':
@@ -225,24 +206,19 @@ const StatsCards = () => {
         }
     }, []);
 
-    /**
-     * Manual refresh handler
-     */
     const handleRefresh = useCallback(async () => {
         await fetchStats(true);
     }, [fetchStats]);
 
-    // Fetch stats on component mount and auth changes
     useEffect(() => {
         fetchStats();
     }, [fetchStats]);
 
-    // Auto-refresh with exponential backoff on errors
     useEffect(() => {
         if (!authState.isAuthenticated) return;
 
-        const baseInterval = 30000; // 30 seconds
-        const interval = Math.min(baseInterval * Math.pow(2, retryCount), 300000); // Max 5 minutes
+        const baseInterval = 30000;
+        const interval = Math.min(baseInterval * Math.pow(2, retryCount), 300000);
 
         const timer = setInterval(() => {
             if (document.visibilityState === 'visible') {
@@ -253,9 +229,25 @@ const StatsCards = () => {
         return () => clearInterval(timer);
     }, [authState.isAuthenticated, fetchStats, retryCount]);
 
-    /**
-     * Render loading state
-     */
+    // 🔁 Update "Predictions Made" card when predictions change
+    useEffect(() => {
+        if (!authState.isAuthenticated) return;
+
+        setStats((prevStats) =>
+            prevStats.map((stat) => {
+                if (stat.label === 'Predictions Made') {
+                    return {
+                        ...stat,
+                        value: (predictions?.length || 0).toLocaleString(),
+                        trend: predictions?.length > 0 ? 'Active' : 'No data',
+                        rawValue: predictions?.length || 0
+                    };
+                }
+                return stat;
+            })
+        );
+    }, [predictions, authState.isAuthenticated]);
+
     if (isLoading && stats.length === 0) {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -276,9 +268,6 @@ const StatsCards = () => {
         );
     }
 
-    /**
-     * Render severe error state
-     */
     if (error && error.message.includes('connect') && stats.length === 0) {
         return (
             <div className="grid grid-cols-1 mb-8">
@@ -343,16 +332,21 @@ const StatsCards = () => {
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex-1">
                             <p className="text-sm text-gray-600 font-medium mb-1">{stat.label}</p>
-                            <p className="text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                                {stat.value}
-                            </p>
+
+                            {stat.label === 'Predictions Made' && stat.value === 'Loading...' ? (
+                                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                            ) : (
+                                <p className="text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                                    {stat.value}
+                                </p>
+                            )}
                         </div>
+
                         <div className={`p-3 rounded-xl ${stat.color} group-hover:scale-110 transition-transform shadow-lg`}>
                             <stat.icon className="h-6 w-6 text-white" />
                         </div>
                     </div>
 
-                    {/* Progress bar */}
                     <div className="flex items-center mb-2">
                         <div className="w-full bg-gray-200 rounded-full h-1.5">
                             <div
@@ -364,7 +358,6 @@ const StatsCards = () => {
 
                     <p className="text-xs text-gray-500 font-medium">{stat.trend}</p>
 
-                    {/* Loading indicator overlay */}
                     {isLoading && (
                         <div className="absolute inset-0 bg-white/50 rounded-2xl flex items-center justify-center">
                             <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
@@ -372,15 +365,6 @@ const StatsCards = () => {
                     )}
                 </div>
             ))}
-
-            {/* Authentication prompt */}
-            {!authState.isAuthenticated && (
-                <div className="col-span-full text-center py-6 bg-blue-50 rounded-2xl border border-blue-200">
-                    <Shield className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-                    <p className="text-blue-800 font-medium mb-2">Sign in to access real-time dashboard analytics</p>
-                    <p className="text-sm text-blue-600">Create an account to track your prediction history and insights</p>
-                </div>
-            )}
         </div>
     );
 };
