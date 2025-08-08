@@ -1,13 +1,510 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+   PROFESSIONAL FINANCIAL PLATFORM STYLES
+   Conference-ready design system for financial health analysis
+  */
+
+/* 
+   CSS CUSTOM PROPERTIES (DESIGN TOKENS)
+    */
+:root {
+    /* Primary Brand Colors */
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-500: #3b82f6;
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+
+    /* Secondary Colors */
+    --color-indigo-500: #6366f1;
+    --color-indigo-600: #4f46e5;
+    --color-purple-500: #8b5cf6;
+    --color-purple-600: #7c3aed;
+
+    /* Status Colors */
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-danger: #ef4444;
+    --color-info: #3b82f6;
+
+    /* Neutral Colors */
+    --color-gray-50: #f8fafc;
+    --color-gray-100: #f1f5f9;
+    --color-gray-200: #e2e8f0;
+    --color-gray-300: #cbd5e1;
+    --color-gray-600: #475569;
+    --color-gray-800: #1e293b;
+    --color-gray-900: #0f172a;
+
+    /* Spacing Scale */
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 0.75rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+
+    /* Typography Scale */
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+
+    /* Border Radius */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* 
+   BASE STYLES
+  */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 50%, #eef2ff 100%);
+    min-height: 100vh;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    line-height: 1.6;
+    color: var(--color-gray-800);
+}
+
+/* 
+   PROFESSIONAL GRADIENT SYSTEM
+ */
+.bg-gradient-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #8b5cf6 100%);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.bg-gradient-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.text-gradient-main {
+    background: linear-gradient(135deg, #1e293b 0%, #4f46e5 50%, #8b5cf6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 700;
+}
+
+.text-gradient-success {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* 
+   BACKDROP AND GLASS EFFECTS
+*/
+.backdrop-blur-custom {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+}
+
+.glass-effect {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-effect-dark {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/*
+   PROFESSIONAL ANIMATIONS
+ */
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+
+    25% {
+        transform: translateY(-5px) rotate(1deg);
+    }
+
+    50% {
+        transform: translateY(-10px) rotate(0deg);
+    }
+
+    75% {
+        transform: translateY(-5px) rotate(-1deg);
+    }
+}
+
+@keyframes pulse-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 5px rgba(79, 70, 229, 0.4);
+        transform: scale(1);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(79, 70, 229, 0.6), 0 0 30px rgba(139, 92, 246, 0.4);
+        transform: scale(1.02);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200px 0;
+    }
+
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Animation Classes */
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-slide-up {
+    animation: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-fade-in {
+    animation: fade-in 0.4s ease-out;
+}
+
+/*
+   PROFESSIONAL COMPONENT STYLES
+*/
+
+/* Enhanced Card System */
+.card-professional {
+    @apply bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-lg;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-professional:hover {
+    @apply shadow-xl;
+    transform: translateY(-2px) scale(1.01);
+    border-color: rgba(79, 70, 229, 0.2);
+}
+
+.card-interactive {
+    @apply card-professional cursor-pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.card-interactive:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(79, 70, 229, 0.1);
+}
+
+.card-interactive:active {
+    transform: translateY(-2px) scale(1.01);
+}
+
+/* Professional Button System */
+.btn-primary {
+    @apply bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-200;
+}
+
+.btn-secondary {
+    @apply bg-white/80 backdrop-blur-sm text-gray-700 font-semibold px-6 py-3 rounded-xl border border-gray-200 shadow-sm hover:bg-white hover:border-indigo-300 hover:text-indigo-700 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-gray-100;
+}
+
+.btn-success {
+    @apply bg-gradient-success text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-200;
+}
+
+.btn-warning {
+    @apply bg-gradient-warning text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-yellow-200;
+}
+
+.btn-danger {
+    @apply bg-gradient-danger text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-200;
+}
+
+.btn-ghost {
+    @apply text-gray-600 font-medium px-4 py-2 rounded-lg hover:bg-gray-100 hover:text-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-200;
+}
+
+/* Professional Form System */
+.form-input {
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white/80 backdrop-blur-sm text-gray-800 placeholder-gray-500 transition-all duration-200 ease-in-out focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 hover:border-indigo-300;
+}
+
+.form-input:focus {
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+}
+
+.form-input-error {
+    @apply form-input border-red-300 focus:border-red-500 focus:ring-red-100;
+}
+
+.form-input-success {
+    @apply form-input border-green-300 focus:border-green-500 focus:ring-green-100;
+}
+
+.form-label {
+    @apply block text-sm font-semibold text-gray-700 mb-2;
+}
+
+.form-error {
+    @apply text-sm text-red-600 mt-1 flex items-center;
+}
+
+.form-help {
+    @apply text-sm text-gray-500 mt-1;
+}
+
+/* Professional Status System */
+.status-healthy {
+    @apply bg-green-50 text-green-800 border border-green-200 px-3 py-1 rounded-full text-sm font-medium;
+}
+
+.status-warning {
+    @apply bg-yellow-50 text-yellow-800 border border-yellow-200 px-3 py-1 rounded-full text-sm font-medium;
+}
+
+.status-danger {
+    @apply bg-red-50 text-red-800 border border-red-200 px-3 py-1 rounded-full text-sm font-medium;
+}
+
+.status-info {
+    @apply bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1 rounded-full text-sm font-medium;
+}
+
+.status-neutral {
+    @apply bg-gray-50 text-gray-800 border border-gray-200 px-3 py-1 rounded-full text-sm font-medium;
+}
+
+/*
+   LOADING SYSTEM
+ */
+.loading-shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+.loading-spinner {
+    border-color: #e5e7eb;
+    border-top-color: #4f46e5;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 
+   PROFESSIONAL SCROLLBARS
+ */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(241, 245, 249, 0.8);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.8);
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.9);
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* 
+   RESPONSIVE DESIGN SYSTEM
+*/
+@media (max-width: 640px) {
+    .text-gradient-main {
+        font-size: 1.5rem;
+        line-height: 1.3;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        @apply px-4 py-2 text-sm;
+    }
+
+    .card-professional {
+        @apply rounded-xl;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        font-size: 0.9rem;
+    }
+
+    .form-input {
+        @apply px-3 py-2 text-sm;
+    }
+}
+
+/*
+   ACCESSIBILITY IMPROVEMENTS
+*/
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+.focus-visible:focus {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .glass-effect {
+        background: rgba(255, 255, 255, 0.95);
+        border: 2px solid #000;
+    }
+
+    .text-gradient-main {
+        background: none;
+        color: #000;
+    }
+}
+
+/*
+   PRINT STYLES
+*/
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+    }
+
+    .card-professional {
+        background: white !important;
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        border: 1px solid #000 !important;
+        background: white !important;
+        color: black !important;
+    }
+}
+
+/* 
+   DARK MODE SUPPORT (FUTURE ENHANCEMENT)
+*/
+@media (prefers-color-scheme: dark) {
+    /* Dark mode styles can be added here for future enhancement */
+}
+
+/*
+   UTILITY CLASSES FOR CONFERENCE PRESENTATION
+*/
+.conference-highlight {
+    @apply bg-gradient-to-r from-yellow-200 to-yellow-300 px-2 py-1 rounded font-semibold;
+}
+
+.professional-shadow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.elevated-card {
+    @apply professional-shadow transform hover:scale-[1.02] transition-all duration-300;
+}
+
+.interactive-highlight {
+    @apply hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all duration-200;
 }
