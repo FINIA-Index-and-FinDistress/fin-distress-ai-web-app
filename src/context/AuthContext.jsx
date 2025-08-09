@@ -3,7 +3,7 @@ import axios from 'axios';
 import qs from 'qs';
 import { useNotifications } from './NotificationContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://findistress-ai-web-app-backend.onrender.com';
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
