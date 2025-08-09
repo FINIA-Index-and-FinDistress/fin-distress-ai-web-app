@@ -176,11 +176,19 @@ const AnalyticsTab = () => {
         </div>
     );
 
-    /**
-     * FIXED: Risk Distribution Chart with safe data handling
-     */
     const RiskDistributionChart = ({ data: chartData, title = "Risk Distribution" }) => {
-        const riskData = safeExtractData(chartData, '', []);
+        console.log('🔍 RiskDistributionChart received data:', chartData);
+
+        // FIXED: Handle the data structure properly
+        let riskData = [];
+
+        if (Array.isArray(chartData)) {
+            riskData = chartData;
+        } else {
+            riskData = [];
+        }
+
+        console.log('📊 Processed risk data:', riskData);
 
         if (!riskData || riskData.length === 0) {
             return (
@@ -193,6 +201,7 @@ const AnalyticsTab = () => {
                         <div className="text-center text-gray-500">
                             <PieChart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                             <p className="text-sm">No risk distribution data available</p>
+                            <p className="text-xs mt-2">Data received: {JSON.stringify(chartData)}</p>
                         </div>
                     </div>
                 </div>
@@ -200,9 +209,9 @@ const AnalyticsTab = () => {
         }
 
         const processedData = riskData.map(item => ({
-            name: safeExtractString(item, 'name', safeExtractString(item, 'category', 'Unknown')),
-            value: safeExtractValue(item, 'value', safeExtractValue(item, 'count', 0)),
-            percentage: safeExtractValue(item, 'percentage', 0)
+            name: item.name || 'Unknown',
+            value: Number(item.value || 0),
+            percentage: Number(item.percentage || 0)
         }));
 
         const total = processedData.reduce((sum, item) => sum + item.value, 0);
@@ -287,11 +296,21 @@ const AnalyticsTab = () => {
         );
     };
 
-    /**
-     * FIXED: Trends Chart with safe data handling
-     */
+    // REPLACE the TrendsChart function in your AnalyticsTab.jsx with this:
+
     const TrendsChart = ({ data: chartData, title = "Risk Trends" }) => {
-        const trendsData = safeExtractData(chartData, '', []);
+        console.log('📈 TrendsChart received data:', chartData);
+
+        // FIXED: Handle the data structure properly
+        let trendsData = [];
+
+        if (Array.isArray(chartData)) {
+            trendsData = chartData;
+        } else {
+            trendsData = [];
+        }
+
+        console.log('📊 Processed trends data:', trendsData);
 
         if (!trendsData || trendsData.length === 0) {
             return (
@@ -304,6 +323,7 @@ const AnalyticsTab = () => {
                         <div className="text-center text-gray-500">
                             <LineChart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                             <p className="text-sm">No trend data available</p>
+                            <p className="text-xs mt-2">Data received: {JSON.stringify(chartData)}</p>
                         </div>
                     </div>
                 </div>
@@ -311,11 +331,9 @@ const AnalyticsTab = () => {
         }
 
         const processedData = trendsData.map(item => ({
-            period: safeExtractString(item, 'period', safeExtractString(item, 'date', 'Unknown')),
-            value: safeExtractValue(item, 'health_score',
-                safeExtractValue(item, 'risk_score',
-                    safeExtractValue(item, 'value', 0))),
-            predictionCount: safeExtractValue(item, 'prediction_count', 0)
+            period: item.period || 'Unknown',
+            value: Number(item.health_score || item.risk_score || item.value || 0),
+            predictionCount: Number(item.prediction_count || 0)
         }));
 
         const maxValue = Math.max(...processedData.map(item => Math.abs(item.value)));
@@ -429,11 +447,21 @@ const AnalyticsTab = () => {
         );
     };
 
-    /**
-     * FIXED: Factors Chart with safe data handling
-     */
+    // REPLACE the FactorsChart function in your AnalyticsTab.jsx with this:
+
     const FactorsChart = ({ data: chartData, title = "Top Risk Factors" }) => {
-        const factorsData = safeExtractData(chartData, '', []);
+        console.log('🔍 FactorsChart received data:', chartData);
+
+        // FIXED: Handle the data structure properly
+        let factorsData = [];
+
+        if (Array.isArray(chartData)) {
+            factorsData = chartData;
+        } else {
+            factorsData = [];
+        }
+
+        console.log('📊 Processed factors data:', factorsData);
 
         if (!factorsData || factorsData.length === 0) {
             return (
@@ -446,6 +474,7 @@ const AnalyticsTab = () => {
                         <div className="text-center text-gray-500">
                             <Activity className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                             <p className="text-sm">No factor analysis data available</p>
+                            <p className="text-xs mt-2">Data received: {JSON.stringify(chartData)}</p>
                         </div>
                     </div>
                 </div>
@@ -453,12 +482,10 @@ const AnalyticsTab = () => {
         }
 
         const processedData = factorsData.map(item => ({
-            factor: safeExtractString(item, 'factor', safeExtractString(item, 'name', 'Unknown Factor')),
-            impact: safeExtractValue(item, 'average_impact',
-                safeExtractValue(item, 'impact',
-                    safeExtractValue(item, 'contribution_percentage', 0))),
-            impactLevel: safeExtractString(item, 'impact_level', 'Medium'),
-            explanation: safeExtractString(item, 'explanation', safeExtractString(item, 'description', 'Factor analysis'))
+            factor: item.factor || item.name || 'Unknown Factor',
+            impact: Number(item.average_impact || item.impact || item.contribution_percentage || 0),
+            impactLevel: item.impact_level || 'Medium',
+            explanation: item.explanation || item.description || 'Factor analysis'
         }));
 
         const maxImpact = Math.max(...processedData.map(item => item.impact));
@@ -605,9 +632,8 @@ const AnalyticsTab = () => {
         );
     };
 
-    /**
-     * FIXED: Render analytics content with safe data handling
-     */
+    // REPLACE the renderAnalyticsContent function in your AnalyticsTab.jsx with this FIXED version:
+
     const renderAnalyticsContent = () => {
         if (!data || data.isEmpty) {
             return renderNoData();
@@ -615,19 +641,21 @@ const AnalyticsTab = () => {
 
         console.log('[AnalyticsTab] Rendering with data:', data);
 
-        // Safe data extraction
+        // FIXED: Direct data extraction without complex path traversal
         const keyMetrics = data.key_metrics || {};
-        const totalPredictions = safeExtractValue(keyMetrics, 'total_predictions', safeExtractValue(data, 'totalPredictions', 0));
-        const avgRiskScore = safeExtractValue(keyMetrics, 'average_risk_score', 0);
-        const healthScore = safeExtractValue(keyMetrics, 'health_score', 100 - (avgRiskScore * 100));
+        const totalPredictions = keyMetrics.total_predictions || data.totalPredictions || 0;
+        const avgRiskScore = keyMetrics.average_risk_score || 0;
+        const healthScore = keyMetrics.health_score || (100 - (avgRiskScore * 100));
 
-        // Safe array extractions
-        const riskDistribution = safeExtractData(data, 'key_metrics.risk_distribution',
-            safeExtractData(data, 'riskDistribution', []));
-        const trendAnalysis = safeExtractData(data, 'risk_trend_analysis',
-            safeExtractData(data, 'monthlyTrends', []));
-        const factorContribution = safeExtractData(data, 'factor_contribution',
-            safeExtractData(data, 'topRiskFactors', []));
+        // FIXED: Direct array extractions
+        const riskDistribution = keyMetrics.risk_distribution || data.riskDistribution || [];
+        const trendAnalysis = data.risk_trend_analysis || data.monthlyTrends || [];
+        const factorContribution = data.factor_contribution || data.topRiskFactors || [];
+
+        // Add console logs to debug
+        console.log('📊 Risk Distribution:', riskDistribution);
+        console.log('📈 Trend Analysis:', trendAnalysis);
+        console.log('🔍 Factor Contribution:', factorContribution);
 
         return (
             <div className="space-y-8">
@@ -750,7 +778,6 @@ const AnalyticsTab = () => {
             </div>
         );
     };
-
     /**
      * Main render
      */
