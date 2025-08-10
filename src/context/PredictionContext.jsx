@@ -21,8 +21,8 @@ export const PredictionProvider = ({ children }) => {
     const { authState } = useAuth();
     const { addNotification } = useNotifications();
 
-    // API base URL with fallback
-    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1';
+    // FIXED: API base URL with correct endpoint
+    const API_BASE = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
 
     /**
      * Get auth headers
@@ -48,12 +48,11 @@ export const PredictionProvider = ({ children }) => {
                 const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
 
                 const config = {
-                    // headers: getAuthHeaders(),
-                    ...options,
                     headers: {
                         ...getAuthHeaders(),
                         ...options.headers
-                    }
+                    },
+                    ...options
                 };
 
                 console.log(`API call attempt ${attempt + 1} to: ${url}`);
@@ -215,6 +214,7 @@ export const PredictionProvider = ({ children }) => {
      */
     const fetchPredictions = useCallback(async () => {
         if (!authState.isAuthenticated) {
+            console.log('User not authenticated, clearing predictions...');
             setPredictions([]);
             return;
         }

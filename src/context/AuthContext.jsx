@@ -3,7 +3,8 @@ import axios from 'axios';
 import qs from 'qs';
 import { useNotifications } from './NotificationContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://findistress-ai-web-app-backend.onrender.com';
+// FIXED: Correct API base URL with /api/v1 suffix
+const API_BASE_URL = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -47,7 +48,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // NEW: Get authentication headers for API calls
+    // FIXED: Get authentication headers for API calls
     const getAuthHeaders = useCallback(() => {
         const headers = {
             'Content-Type': 'application/json',
@@ -75,10 +76,10 @@ export const AuthProvider = ({ children }) => {
                 if (error.response?.status === 401 && !originalRequest._retry) {
                     originalRequest._retry = true;
 
-                    if (refreshToken && originalRequest.url !== '/api/v1/login') {
+                    if (refreshToken && originalRequest.url !== '/login') {
                         try {
                             console.log('🔄 Attempting token refresh...');
-                            const refreshResponse = await axios.post(`${API_BASE_URL}/api/v1/refresh`, {
+                            const refreshResponse = await axios.post(`${API_BASE_URL}/refresh`, {
                                 refresh_token: refreshToken
                             }, {
                                 headers: { 'Content-Type': 'application/json' }
@@ -126,7 +127,7 @@ export const AuthProvider = ({ children }) => {
 
         try {
             console.log('🔑 Attempting JSON login...');
-            const response = await apiClient.post('/api/v1/login', {
+            const response = await apiClient.post('/login', {
                 username: username.trim(),
                 password: password.trim(),
             });
@@ -147,7 +148,7 @@ export const AuthProvider = ({ children }) => {
             setAuthorizationHeader(access_token);
 
             // Get user profile
-            const userResponse = await apiClient.get('/api/v1/users/me');
+            const userResponse = await apiClient.get('/users/me');
             const userData = userResponse.data;
 
             setUser(userData);
@@ -174,7 +175,7 @@ export const AuthProvider = ({ children }) => {
                     password: password.trim()
                 });
 
-                const response = await apiClient.post('/api/v1/token', formData, {
+                const response = await apiClient.post('/token', formData, {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 });
 
@@ -193,7 +194,7 @@ export const AuthProvider = ({ children }) => {
                 setAccessToken(access_token);
                 setAuthorizationHeader(access_token);
 
-                const userResponse = await apiClient.get('/api/v1/users/me');
+                const userResponse = await apiClient.get('/users/me');
                 const userData = userResponse.data;
 
                 setUser(userData);
@@ -240,7 +241,7 @@ export const AuthProvider = ({ children }) => {
 
         try {
             console.log('🔑 Attempting registration...');
-            await apiClient.post('/api/v1/register', {
+            await apiClient.post('/register', {
                 username: username.trim(),
                 email: email.trim(),
                 password: password.trim(),
@@ -288,7 +289,7 @@ export const AuthProvider = ({ children }) => {
         if (!accessToken) return null;
 
         try {
-            const response = await apiClient.get('/api/v1/users/me');
+            const response = await apiClient.get('/users/me');
             setUser(response.data);
             return response.data;
         } catch (error) {
@@ -308,7 +309,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const response = await apiClient.put('/api/v1/users/me', profileData);
+            const response = await apiClient.put('/users/me', profileData);
             setUser(response.data);
             addNotification('Profile updated successfully!', 'success');
             return { success: true, user: response.data };
@@ -325,7 +326,7 @@ export const AuthProvider = ({ children }) => {
         if (!accessToken) return null;
 
         try {
-            const response = await apiClient.get('/api/v1/users/me/preferences');
+            const response = await apiClient.get('/users/me/preferences');
             setUserPreferences(response.data);
             return response.data;
         } catch (error) {
@@ -343,7 +344,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const response = await apiClient.put('/api/v1/users/me/preferences', preferences);
+            const response = await apiClient.put('/users/me/preferences', preferences);
             setUserPreferences(response.data.preferences);
             addNotification('Preferences updated successfully!', 'success');
             return { success: true, preferences: response.data.preferences };
@@ -361,7 +362,7 @@ export const AuthProvider = ({ children }) => {
 
         try {
             console.log(`📊 Fetching analytics data for ${days} days...`);
-            const response = await apiClient.get(`/api/v1/analytics?days=${days}`);
+            const response = await apiClient.get(`/analytics?days=${days}`);
             console.log('✅ Analytics data received:', response.data);
             return response.data;
         } catch (error) {
@@ -378,7 +379,7 @@ export const AuthProvider = ({ children }) => {
 
         try {
             console.log('🧠 Fetching insights data...');
-            const response = await apiClient.get('/api/v1/insights');
+            const response = await apiClient.get('/insights/fast');
             console.log('✅ Insights data received:', response.data);
             return response.data;
         } catch (error) {
@@ -395,7 +396,7 @@ export const AuthProvider = ({ children }) => {
 
         try {
             console.log('📈 Fetching dashboard data...');
-            const response = await apiClient.get('/api/v1/dashboard');
+            const response = await apiClient.get('/dashboard');
             console.log('✅ Dashboard data received:', response.data);
             return response.data;
         } catch (error) {
@@ -410,7 +411,7 @@ export const AuthProvider = ({ children }) => {
     const testConnection = useCallback(async () => {
         try {
             console.log('🔍 Testing server connection...');
-            const response = await fetch(`${API_BASE_URL}/api/v1/health`);
+            const response = await fetch(`${API_BASE_URL}/health`);
             if (response.ok) {
                 const data = await response.json();
                 console.log('✅ Server connection test passed:', data);
@@ -444,7 +445,7 @@ export const AuthProvider = ({ children }) => {
                 setAuthorizationHeader(token);
                 console.log('🔍 Validating stored token...');
 
-                const response = await apiClient.get('/api/v1/users/me');
+                const response = await apiClient.get('/users/me');
                 const userData = response.data;
 
                 setUser(userData);
@@ -454,7 +455,7 @@ export const AuthProvider = ({ children }) => {
 
                 // Load user preferences
                 try {
-                    const preferences = await apiClient.get('/api/v1/users/me/preferences');
+                    const preferences = await apiClient.get('/users/me/preferences');
                     setUserPreferences(preferences.data);
                 } catch (prefError) {
                     console.warn('Could not load user preferences during init:', prefError);
@@ -503,6 +504,7 @@ export const AuthProvider = ({ children }) => {
         userPreferences,
         loading: authState === AUTH_STATES.LOADING,
         accessToken,
+        token: accessToken, // ADDED: For compatibility
         isAuthenticated: authState === AUTH_STATES.AUTHENTICATED && !!user && !!accessToken,
 
         // Auth state object for compatibility with usePredictionData hook
@@ -531,7 +533,7 @@ export const AuthProvider = ({ children }) => {
         getDashboard,
 
         // Utility methods
-        getAuthHeaders, // ADDED: This was missing and needed by usePredictionData
+        getAuthHeaders, // FIXED: This was missing and needed by usePredictionData
         testConnection,
 
         // API client for direct use

@@ -3,6 +3,12 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
+// Log API configuration for debugging
+console.log('🔧 API Configuration:', {
+    BASE_URL: import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1',
+    ENVIRONMENT: import.meta.env.MODE,
+    DEV_MODE: import.meta.env.VITE_DEV_MODE
+});
 
 // Performance monitoring for conference demonstration
 const startTime = performance.now();
