@@ -1,141 +1,27 @@
-# Netlify Configuration for FinDistress AI Frontend
-# Place this file in the root of your frontend project
-
+# Simplified Netlify Configuration for FinDistress AI Frontend
 [build]
-  # Build settings
   publish = "dist"
   command = "npm run build"
-  
-  # Build environment variables
-  [build.environment]
-    NODE_VERSION = "18"
-    NPM_VERSION = "9"
 
 # Headers configuration
 [[headers]]
-  # Apply to all pages
   for = "/*"
   [headers.values]
-    # Content Security Policy - Updated to include your backend
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://findistress-ai-web-app-backend.onrender.com https://api.findistress.ai https://www.google-analytics.com http://localhost:8000 http://127.0.0.1:8000; img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-    
-    # Security headers
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://findistress-ai-web-app-backend.onrender.com https://api.findistress.ai https://www.google-analytics.com http://localhost:8000 http://127.0.0.1:8000; img-src 'self' data: https:; frame-ancestors 'none'"
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    
-    # Additional security headers
-    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-    
-    # Cache control for static assets
-    Cache-Control = "public, max-age=31536000, immutable"
 
-# Specific headers for HTML files
-[[headers]]
-  for = "*.html"
-  [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
-
-# Specific headers for service worker
+# Service worker headers
 [[headers]]
   for = "/sw.js"
   [headers.values]
     Content-Type = "application/javascript; charset=utf-8"
     Cache-Control = "public, max-age=0, must-revalidate"
-    Service-Worker-Allowed = "/"
 
-# Specific headers for API-like files
-[[headers]]
-  for = "*.json"
-  [headers.values]
-    Content-Type = "application/json; charset=utf-8"
-    Cache-Control = "public, max-age=0, must-revalidate"
-
-# Font files
-[[headers]]
-  for = "*.woff2"
-  [headers.values]
-    Content-Type = "font/woff2"
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# Image files
-[[headers]]
-  for = "*.{jpg,jpeg,png,gif,webp,svg,ico}"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# CSS and JS files
-[[headers]]
-  for = "*.{css,js}"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# SPA redirect rules - Handle client-side routing
+# SPA redirect
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  # Don't redirect if the file exists
-  conditions = {Role = ["admin"], Country = ["US"]}
-
-# Better SPA redirect rule
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  # Only redirect if the request doesn't match an existing file
-  force = false
-
-# API proxy rules (optional - if you want to proxy API calls)
-# [[redirects]]
-#   from = "/api/*"
-#   to = "https://findistress-ai-web-app-backend.onrender.com/api/:splat"
-#   status = 200
-#   force = true
-#   headers = {X-From = "Netlify"}
-
-# Error pages
-[[redirects]]
-  from = "/404"
-  to = "/index.html"
-  status = 200
-
-# Edge functions configuration (if you plan to use them)
-# [functions]
-#   external_node_modules = ["some-package"]
-#   node_bundler = "esbuild"
-
-# Environment-specific settings
-[context.production]
-  command = "npm run build"
-  [context.production.environment]
-    NODE_ENV = "production"
-    REACT_APP_API_URL = "https://findistress-ai-web-app-backend.onrender.com"
-
-[context.deploy-preview]
-  command = "npm run build"
-  [context.deploy-preview.environment]
-    NODE_ENV = "development"
-    REACT_APP_API_URL = "https://findistress-ai-web-app-backend.onrender.com"
-
-[context.branch-deploy]
-  command = "npm run build"
-  [context.branch-deploy.environment]
-    NODE_ENV = "development"
-    REACT_APP_API_URL = "https://findistress-ai-web-app-backend.onrender.com"
-
-# Form handling (if you have contact forms)
-# [build.processing]
-#   skip_processing = false
-# [build.processing.css]
-#   bundle = true
-#   minify = true
-# [build.processing.js]
-#   bundle = true
-#   minify = true
-# [build.processing.html]
-#   pretty_urls = true
-# [build.processing.images]
-#   compress = true
