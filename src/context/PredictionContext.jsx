@@ -21,7 +21,7 @@ export const PredictionProvider = ({ children }) => {
     const { authState } = useAuth();
     const { addNotification } = useNotifications();
 
-    // FIXED: API base URL with correct endpoint
+    // CRITICAL FIX: API base URL with correct endpoint including /api/v1
     const API_BASE = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
 
     /**

@@ -3,13 +3,23 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-// Log API configuration for debugging
-console.log('🔧 API Configuration:', {
-    BASE_URL: import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1',
-    ENVIRONMENT: import.meta.env.MODE,
-    DEV_MODE: import.meta.env.VITE_DEV_MODE
-});
+// ENHANCED DEBUG: Log everything about API configuration
+console.log('🔧 ENHANCED API Configuration Debug:');
+console.log('Environment Mode:', import.meta.env.MODE);
+console.log('VITE_API_BASE (raw):', import.meta.env.VITE_API_BASE);
+console.log('All Environment Variables:', Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')));
+console.log('Hard-coded API Base:', 'https://findistress-ai-web-app-backend.onrender.com/api/v1');
 
+// Test the API endpoint directly
+console.log('🧪 Testing API endpoint...');
+fetch('https://findistress-ai-web-app-backend.onrender.com/api/v1/health')
+    .then(response => {
+        console.log('✅ API Health Check Status:', response.status);
+        return response.json();
+    })
+    .then(data => console.log('✅ API Health Check Data:', data))
+    .catch(error => console.error('❌ API Health Check Failed:', error));
+    
 // Performance monitoring for conference demonstration
 const startTime = performance.now();
 

@@ -17,7 +17,7 @@ const usePredictionData = (dataType = 'dashboard') => {
 
     const { authState, getAuthHeaders } = useAuth();
 
-    // FIXED: API configuration with correct endpoints
+    // CRITICAL FIX: API configuration with correct endpoints including /api/v1
     const API_BASE = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
 
     /**

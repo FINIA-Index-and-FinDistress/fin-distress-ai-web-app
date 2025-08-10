@@ -3,7 +3,7 @@ import axios from 'axios';
 import qs from 'qs';
 import { useNotifications } from './NotificationContext';
 
-// FIXED: Correct API base URL with /api/v1 suffix
+// CRITICAL FIX: Correct API base URL with /api/v1 suffix
 const API_BASE_URL = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
 const AuthContext = createContext(null);
 
