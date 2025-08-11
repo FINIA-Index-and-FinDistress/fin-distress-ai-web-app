@@ -197,7 +197,7 @@ const UserMenu = ({ onNavigate, userMenuItems = [] }) => {
             onNavigate(path);
         } else {
             // Fallback navigation
-            window.location.href = path;
+            console.log('Navigate to:', path);
         }
     };
 

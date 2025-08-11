@@ -582,7 +582,8 @@ const isTokenExpired = (token) => {
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         const now = Date.now() / 1000;
-        return payload.exp < now;
+        // Add 5 minute buffer to prevent edge cases
+        return payload.exp < (now + 300);
     } catch (error) {
         console.error('Error parsing token:', error);
         return true;
@@ -612,9 +613,10 @@ export const AuthProvider = ({ children }) => {
     const [refreshToken, setRefreshToken] = useState(null);
     const [userPreferences, setUserPreferences] = useState(null);
     const [lastActivity, setLastActivity] = useState(Date.now());
-    const { addNotification, addApiErrorNotification } = useNotifications();
+    const { addNotification } = useNotifications();
     const initializationRef = useRef(false);
     const activityTimeoutRef = useRef(null);
+    const isInitializedRef = useRef(false);
 
     // FIXED: Enhanced API client with better error handling
     const apiClient = axios.create({
@@ -660,7 +662,7 @@ export const AuthProvider = ({ children }) => {
         // Set new timeout for 1 hour of inactivity
         activityTimeoutRef.current = setTimeout(() => {
             console.log('🕐 Auto-logout due to inactivity');
-            signOut();
+            signOut(false); // Auto logout
         }, 60 * 60 * 1000); // 1 hour
     }, []);
 
@@ -717,7 +719,7 @@ export const AuthProvider = ({ children }) => {
 
             // Only sign out if it's a real authentication error, not a network error
             if (error.response?.status === 401 || error.response?.status === 403) {
-                signOut();
+                signOut(false);
             }
 
             throw error;
@@ -756,9 +758,14 @@ export const AuthProvider = ({ children }) => {
                     return apiClient(originalRequest);
                 } catch (refreshError) {
                     console.error('❌ Token refresh in interceptor failed:', refreshError);
-                    // Don't automatically sign out on network errors
+                    // Don't automatically sign out on network errors during initialization
+                    if (!isInitializedRef.current) {
+                        console.log('⏳ Skipping logout during initialization');
+                        return Promise.reject(refreshError);
+                    }
+
                     if (refreshError.response?.status === 401 || refreshError.response?.status === 403) {
-                        signOut();
+                        signOut(false);
                     }
                     return Promise.reject(refreshError);
                 }
@@ -835,6 +842,7 @@ export const AuthProvider = ({ children }) => {
             setUser(userData);
             setAuthState(AUTH_STATES.AUTHENTICATED);
             updateActivity(); // Start activity tracking
+            isInitializedRef.current = true; // Mark as initialized
 
             // Load user preferences
             try {
@@ -882,6 +890,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(userData);
                 setAuthState(AUTH_STATES.AUTHENTICATED);
                 updateActivity(); // Start activity tracking
+                isInitializedRef.current = true; // Mark as initialized
 
                 // Load user preferences
                 try {
@@ -965,8 +974,8 @@ export const AuthProvider = ({ children }) => {
             return response.data;
         } catch (error) {
             console.error('Failed to get user profile:', error);
-            if (error.response?.status === 401) {
-                signOut();
+            if (error.response?.status === 401 && isInitializedRef.current) {
+                signOut(false);
             }
             return null;
         }
@@ -1101,7 +1110,7 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
-    // FIXED: Enhanced initialization with better error handling
+    // FIXED: Enhanced initialization with proper token preservation
     useEffect(() => {
         const initializeAuth = async () => {
             if (initializationRef.current) return;
@@ -1114,46 +1123,25 @@ export const AuthProvider = ({ children }) => {
             if (!token) {
                 console.log('🔍 No token found, user not authenticated');
                 setAuthState(AUTH_STATES.UNAUTHENTICATED);
+                isInitializedRef.current = true;
                 return;
             }
 
-            // FIXED: Check token expiration before making API calls
-            if (isTokenExpired(token)) {
-                console.log('🔍 Stored token is expired, attempting refresh...');
-
-                if (storedRefreshToken) {
-                    try {
-                        const newToken = await refreshAccessToken();
-                        // If refresh succeeds, the interceptor and state will be updated
-                        console.log('✅ Token refreshed during initialization');
-                    } catch (error) {
-                        console.error('❌ Token refresh during initialization failed:', error);
-                        localStorage.removeItem('accessToken');
-                        localStorage.removeItem('refreshToken');
-                        setAuthState(AUTH_STATES.UNAUTHENTICATED);
-                        return;
-                    }
-                } else {
-                    console.log('🔍 No refresh token available, signing out');
-                    localStorage.removeItem('accessToken');
-                    setAuthState(AUTH_STATES.UNAUTHENTICATED);
-                    return;
-                }
-            }
-
-            // Validate current token
+            // CRITICAL FIX: Don't check expiration during initialization
+            // Let the server validate the token
             try {
                 setAuthorizationHeader(token);
-                console.log('🔍 Validating stored token...');
+                setAccessToken(token);
+                setRefreshToken(storedRefreshToken);
 
+                console.log('🔍 Validating stored token...');
                 const response = await apiClient.get('/users/me');
                 const userData = response.data;
 
                 setUser(userData);
-                setAccessToken(token);
-                setRefreshToken(storedRefreshToken);
                 setAuthState(AUTH_STATES.AUTHENTICATED);
                 updateActivity(); // Start activity tracking
+                isInitializedRef.current = true;
 
                 // Load user preferences
                 try {
@@ -1167,14 +1155,31 @@ export const AuthProvider = ({ children }) => {
             } catch (error) {
                 console.error('❌ Token validation failed during initialization:', error);
 
-                // FIXED: Only clear tokens if it's a real auth error, not network error
-                if (error.response?.status === 401 || error.response?.status === 403) {
-                    localStorage.removeItem('accessToken');
-                    localStorage.removeItem('refreshToken');
-                    setAuthState(AUTH_STATES.UNAUTHENTICATED);
+                // CRITICAL FIX: Try refresh before giving up
+                if (storedRefreshToken && (error.response?.status === 401 || error.response?.status === 403)) {
+                    try {
+                        console.log('🔄 Attempting token refresh during initialization...');
+                        await refreshAccessToken();
+                        // If refresh succeeds, try validation again
+                        const response = await apiClient.get('/users/me');
+                        const userData = response.data;
+
+                        setUser(userData);
+                        setAuthState(AUTH_STATES.AUTHENTICATED);
+                        updateActivity();
+                        isInitializedRef.current = true;
+
+                        console.log('✅ Authentication recovered via refresh for:', userData.username);
+                    } catch (refreshError) {
+                        console.error('❌ Token refresh during initialization failed:', refreshError);
+                        localStorage.removeItem('accessToken');
+                        localStorage.removeItem('refreshToken');
+                        setAuthState(AUTH_STATES.UNAUTHENTICATED);
+                        isInitializedRef.current = true;
+                    }
                 } else {
-                    // Network error - keep trying
-                    console.log('🔄 Network error during initialization, will retry...');
+                    // Network error or other non-auth error - keep trying
+                    console.log('🔄 Network error during initialization, retrying...');
                     setTimeout(() => {
                         initializationRef.current = false;
                         initializeAuth();
@@ -1234,7 +1239,7 @@ export const AuthProvider = ({ children }) => {
         // Authentication methods
         signIn,
         signUp,
-        signOut: (userInitiated = true) => signOut(userInitiated), // FIXED: Allow specifying if user initiated
+        signOut, // Will default to userInitiated = true when called from UI
 
         // User methods
         isAdmin,
