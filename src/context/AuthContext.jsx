@@ -153,12 +153,22 @@ const storage = {
 
 export const AuthProvider = ({ children }) => {
     const [authState, dispatch] = useReducer(authReducer, initialState);
-    const { addNotification } = useNotifications();
+
+    // FIXED: Safe access to notifications context
+    let addNotification = null;
+    try {
+        const notificationsContext = useNotifications();
+        addNotification = notificationsContext?.addNotification || (() => { });
+    } catch (error) {
+        console.warn('Notifications context not available:', error);
+        addNotification = () => { }; // Fallback function
+    }
 
     // Refs for managing timers and preventing memory leaks
     const refreshTimerRef = useRef(null);
     const activityTimerRef = useRef(null);
     const isRefreshingRef = useRef(false);
+    const isMountedRef = useRef(true);
 
     // FIXED: API Configuration
     const API_BASE = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
@@ -168,7 +178,7 @@ export const AuthProvider = ({ children }) => {
         const now = Date.now();
         storage.setItem(AUTH_STORAGE_KEYS.LAST_ACTIVITY, now);
 
-        if (authState.isAuthenticated) {
+        if (authState.isAuthenticated && isMountedRef.current) {
             dispatch({
                 type: AUTH_ACTIONS.UPDATE_USER,
                 payload: { lastActivity: now }
@@ -236,14 +246,16 @@ export const AuthProvider = ({ children }) => {
             storage.setItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY, newExpiry);
 
             // Update state
-            dispatch({
-                type: AUTH_ACTIONS.TOKEN_REFRESH,
-                payload: {
-                    accessToken: data.access_token,
-                    refreshToken: data.refresh_token,
-                    tokenExpiry: newExpiry
-                }
-            });
+            if (isMountedRef.current) {
+                dispatch({
+                    type: AUTH_ACTIONS.TOKEN_REFRESH,
+                    payload: {
+                        accessToken: data.access_token,
+                        refreshToken: data.refresh_token,
+                        tokenExpiry: newExpiry
+                    }
+                });
+            }
 
             console.log('✅ Token refreshed successfully');
 
@@ -275,7 +287,9 @@ export const AuthProvider = ({ children }) => {
 
         if (refreshTime > 0) {
             refreshTimerRef.current = setTimeout(() => {
-                refreshAccessToken();
+                if (isMountedRef.current) {
+                    refreshAccessToken();
+                }
             }, refreshTime);
         } else {
             // Token is about to expire or has expired
@@ -288,17 +302,21 @@ export const AuthProvider = ({ children }) => {
         const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
 
         const handleActivity = () => {
-            updateActivity();
+            if (isMountedRef.current) {
+                updateActivity();
 
-            // Reset inactivity timer
-            if (activityTimerRef.current) {
-                clearTimeout(activityTimerRef.current);
+                // Reset inactivity timer
+                if (activityTimerRef.current) {
+                    clearTimeout(activityTimerRef.current);
+                }
+
+                // Set up inactivity check for 1 hour + 1 minute
+                activityTimerRef.current = setTimeout(() => {
+                    if (isMountedRef.current) {
+                        checkInactivity();
+                    }
+                }, 61 * 60 * 1000);
             }
-
-            // Set up inactivity check for 1 hour + 1 minute
-            activityTimerRef.current = setTimeout(() => {
-                checkInactivity();
-            }, 61 * 60 * 1000);
         };
 
         events.forEach(event => {
@@ -314,6 +332,8 @@ export const AuthProvider = ({ children }) => {
 
     // FIXED: Enhanced login function with proper token storage
     const login = useCallback(async (credentials) => {
+        if (!isMountedRef.current) return { success: false, error: 'Component unmounted' };
+
         dispatch({ type: AUTH_ACTIONS.LOGIN_START });
 
         try {
@@ -378,38 +398,46 @@ export const AuthProvider = ({ children }) => {
             storage.setItem(AUTH_STORAGE_KEYS.LAST_ACTIVITY, Date.now());
 
             // Update state
-            dispatch({
-                type: AUTH_ACTIONS.LOGIN_SUCCESS,
-                payload: {
-                    user: userData,
-                    accessToken: data.access_token,
-                    refreshToken: data.refresh_token,
-                    tokenExpiry
-                }
-            });
+            if (isMountedRef.current) {
+                dispatch({
+                    type: AUTH_ACTIONS.LOGIN_SUCCESS,
+                    payload: {
+                        user: userData,
+                        accessToken: data.access_token,
+                        refreshToken: data.refresh_token,
+                        tokenExpiry
+                    }
+                });
 
-            // Schedule token refresh
-            scheduleTokenRefresh(tokenExpiry);
+                // Schedule token refresh
+                scheduleTokenRefresh(tokenExpiry);
+            }
 
             console.log('✅ Login successful');
-            addNotification('Welcome back! You are now signed in.', 'success');
+            if (addNotification) {
+                addNotification('Welcome back! You are now signed in.', 'success');
+            }
 
             return { success: true, user: userData };
 
         } catch (error) {
             console.error('❌ Login failed:', error);
 
-            dispatch({
-                type: AUTH_ACTIONS.LOGIN_FAILURE,
-                payload: error.message
-            });
+            if (isMountedRef.current) {
+                dispatch({
+                    type: AUTH_ACTIONS.LOGIN_FAILURE,
+                    payload: error.message
+                });
+            }
 
-            addNotification(
-                error.message.includes('timeout')
-                    ? 'Connection timeout. Please check your internet connection and try again.'
-                    : error.message || 'Login failed. Please check your credentials.',
-                'error'
-            );
+            if (addNotification) {
+                addNotification(
+                    error.message.includes('timeout')
+                        ? 'Connection timeout. Please check your internet connection and try again.'
+                        : error.message || 'Login failed. Please check your credentials.',
+                    'error'
+                );
+            }
 
             return { success: false, error: error.message };
         }
@@ -432,9 +460,11 @@ export const AuthProvider = ({ children }) => {
             storage.clear();
 
             // Update state
-            dispatch({ type: AUTH_ACTIONS.LOGOUT });
+            if (isMountedRef.current) {
+                dispatch({ type: AUTH_ACTIONS.LOGOUT });
+            }
 
-            if (showNotification) {
+            if (showNotification && addNotification) {
                 addNotification('You have been signed out successfully.', 'info');
             }
 
@@ -443,12 +473,16 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error('❌ Logout error:', error);
             // Still proceed with logout even if there's an error
-            dispatch({ type: AUTH_ACTIONS.LOGOUT });
+            if (isMountedRef.current) {
+                dispatch({ type: AUTH_ACTIONS.LOGOUT });
+            }
         }
     }, [addNotification]);
 
     // CRITICAL FIX: Initialize authentication state from storage
     const initializeAuth = useCallback(async () => {
+        if (!isMountedRef.current) return;
+
         dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
 
         try {
@@ -461,13 +495,17 @@ export const AuthProvider = ({ children }) => {
 
             if (!accessToken || !refreshToken || !userData) {
                 console.log('🔍 No stored auth data found');
-                dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+                if (isMountedRef.current) {
+                    dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+                }
                 return;
             }
 
             // Check if user was inactive for too long
             if (!checkInactivity()) {
-                dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+                if (isMountedRef.current) {
+                    dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+                }
                 return;
             }
 
@@ -478,25 +516,27 @@ export const AuthProvider = ({ children }) => {
                 console.log('🔄 Token expired or expiring soon, attempting refresh...');
                 const refreshSuccess = await refreshAccessToken();
 
-                if (!refreshSuccess) {
+                if (!refreshSuccess && isMountedRef.current) {
                     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
                     return;
                 }
             } else {
                 // Token is still valid
-                dispatch({
-                    type: AUTH_ACTIONS.LOGIN_SUCCESS,
-                    payload: {
-                        user: userData,
-                        accessToken,
-                        refreshToken,
-                        tokenExpiry
-                    }
-                });
+                if (isMountedRef.current) {
+                    dispatch({
+                        type: AUTH_ACTIONS.LOGIN_SUCCESS,
+                        payload: {
+                            user: userData,
+                            accessToken,
+                            refreshToken,
+                            tokenExpiry
+                        }
+                    });
 
-                // Schedule refresh for this token
-                if (tokenExpiry) {
-                    scheduleTokenRefresh(tokenExpiry);
+                    // Schedule refresh for this token
+                    if (tokenExpiry) {
+                        scheduleTokenRefresh(tokenExpiry);
+                    }
                 }
             }
 
@@ -506,7 +546,9 @@ export const AuthProvider = ({ children }) => {
             console.error('❌ Auth initialization failed:', error);
             storage.clear();
         } finally {
-            dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+            if (isMountedRef.current) {
+                dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+            }
         }
     }, [checkInactivity, refreshAccessToken, scheduleTokenRefresh]);
 
@@ -523,6 +565,8 @@ export const AuthProvider = ({ children }) => {
 
     // Update user profile
     const updateUser = useCallback((updates) => {
+        if (!isMountedRef.current) return;
+
         const updatedUser = { ...authState.user, ...updates };
         storage.setItem(AUTH_STORAGE_KEYS.USER_DATA, updatedUser);
         dispatch({
@@ -533,18 +577,22 @@ export const AuthProvider = ({ children }) => {
 
     // Clear error
     const clearError = useCallback(() => {
-        dispatch({ type: AUTH_ACTIONS.RESET_ERROR });
+        if (isMountedRef.current) {
+            dispatch({ type: AUTH_ACTIONS.RESET_ERROR });
+        }
     }, []);
 
     // FIXED: Initialize auth and set up activity monitoring on mount
     useEffect(() => {
         console.log('🚀 AuthProvider mounting...');
+        isMountedRef.current = true;
 
         const cleanup = setupActivityMonitoring();
         initializeAuth();
 
         return () => {
             console.log('🧹 AuthProvider unmounting...');
+            isMountedRef.current = false;
             cleanup();
             if (refreshTimerRef.current) {
                 clearTimeout(refreshTimerRef.current);
