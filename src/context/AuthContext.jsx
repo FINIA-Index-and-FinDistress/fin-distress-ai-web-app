@@ -188,12 +188,22 @@ export const AuthProvider = ({ children }) => {
                 console.warn('Failed to fetch user profile, using defaults:', userError);
             }
 
-            // Calculate token expiry
-            const tokenExpiry = Date.now() + (data.expires_in * 1000);
+            // FIXED: Calculate token expiry safely
+            let tokenExpiry = Date.now() + (2 * 60 * 60 * 1000); // Default 2 hours
+
+            // Check if expires_in exists and is a number
+            if (data.expires_in && typeof data.expires_in === 'number') {
+                tokenExpiry = Date.now() + (data.expires_in * 1000);
+            } else if (data.expires_in && typeof data.expires_in === 'string') {
+                const expiresInNum = parseInt(data.expires_in, 10);
+                if (!isNaN(expiresInNum)) {
+                    tokenExpiry = Date.now() + (expiresInNum * 1000);
+                }
+            }
 
             // Store authentication data
             authStorage.set(authStorage.keys.ACCESS_TOKEN, data.access_token);
-            authStorage.set(authStorage.keys.REFRESH_TOKEN, data.refresh_token);
+            authStorage.set(authStorage.keys.REFRESH_TOKEN, data.refresh_token || '');
             authStorage.set(authStorage.keys.USER_DATA, userData);
             authStorage.set(authStorage.keys.TOKEN_EXPIRY, tokenExpiry);
             authStorage.set(authStorage.keys.LAST_ACTIVITY, Date.now());
@@ -201,7 +211,7 @@ export const AuthProvider = ({ children }) => {
             // Update state
             setUser(userData);
             setAccessToken(data.access_token);
-            setRefreshToken(data.refresh_token);
+            setRefreshToken(data.refresh_token || '');
             setIsAuthenticated(true);
             setError(null);
 
@@ -210,8 +220,9 @@ export const AuthProvider = ({ children }) => {
 
         } catch (loginError) {
             console.error('❌ Login failed:', loginError);
-            setError(loginError.message);
-            return { success: false, error: loginError.message };
+            const errorMessage = loginError.message || 'Login failed';
+            setError(errorMessage);
+            return { success: false, error: errorMessage };
         } finally {
             setLoading(false);
         }
@@ -266,7 +277,7 @@ export const AuthProvider = ({ children }) => {
             const storedUser = authStorage.get(authStorage.keys.USER_DATA);
             const storedExpiry = authStorage.get(authStorage.keys.TOKEN_EXPIRY);
 
-            if (!storedToken || !storedRefreshToken || !storedUser) {
+            if (!storedToken || !storedUser) {
                 console.log('🔍 No stored auth data found');
                 setLoading(false);
                 return;
@@ -292,7 +303,7 @@ export const AuthProvider = ({ children }) => {
             // Token is still valid, restore session
             setUser(storedUser);
             setAccessToken(storedToken);
-            setRefreshToken(storedRefreshToken);
+            setRefreshToken(storedRefreshToken || '');
             setIsAuthenticated(true);
 
             console.log('✅ Authentication restored from storage');
