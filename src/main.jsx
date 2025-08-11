@@ -14,11 +14,11 @@ console.log('Hard-coded API Base:', 'https://findistress-ai-web-app-backend.onre
 console.log('🧪 Testing API endpoint...');
 fetch('https://findistress-ai-web-app-backend.onrender.com/api/v1/health')
     .then(response => {
-        console.log('✅ API Health Check Status:', response.status);
+        console.log('API Health Check Status:', response.status);
         return response.json();
     })
-    .then(data => console.log('✅ API Health Check Data:', data))
-    .catch(error => console.error('❌ API Health Check Failed:', error));
+    .then(data => console.log('API Health Check Data:', data))
+    .catch(error => console.error('API Health Check Failed:', error));
     
 // Performance monitoring for conference demonstration
 const startTime = performance.now();
@@ -67,7 +67,7 @@ const renderApp = () => {
         const endTime = performance.now();
         const loadTime = endTime - startTime;
 
-        console.log(`🚀 FinDistress AI loaded in ${loadTime.toFixed(2)}ms`);
+        console.log(`FinDistress AI loaded in ${loadTime.toFixed(2)}ms`);
 
         // Optional: Track performance metrics
         if (window.gtag) {
@@ -173,7 +173,7 @@ if ('PerformanceObserver' in window) {
         const entries = entryList.getEntries();
         entries.forEach((entry) => {
             if (entry.entryType === 'navigation') {
-                console.log(`📊 Navigation timing: ${entry.loadEventEnd - entry.loadEventStart}ms`);
+                console.log(`Navigation timing: ${entry.loadEventEnd - entry.loadEventStart}ms`);
             }
         });
     });

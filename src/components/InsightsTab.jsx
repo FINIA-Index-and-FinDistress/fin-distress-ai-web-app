@@ -757,10 +757,10 @@ const InsightsTab = () => {
                 <div className="px-8 py-4 bg-gradient-to-r from-purple-50 to-pink-50 border-t border-purple-200">
                     <div className="flex items-center justify-between text-sm text-purple-800">
                         <div className="flex items-center space-x-4">
-                            <span>🤖 AI-Powered Analysis</span>
-                            <span>📊 Data-Driven Insights</span>
-                            <span>⚡ Real-time Recommendations</span>
-                            <span>🎯 Actionable Guidance</span>
+                            <span>AI-Powered Analysis</span>
+                            <span>Data-Driven Insights</span>
+                            <span>Real-time Recommendations</span>
+                            <span>Actionable Guidance</span>
                         </div>
                         <div className="flex items-center space-x-2">
                             <span>Quality: {dataQuality || 'Good'}</span>

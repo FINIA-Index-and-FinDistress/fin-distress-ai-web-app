@@ -221,7 +221,7 @@ export const PredictionProvider = ({ children }) => {
 
         try {
             setError(null);
-            console.log('🔄 Fetching predictions...');
+            console.log('Fetching predictions...');
 
             const response = await apiCall('/predictions/history?limit=20', {}, 1);
 
@@ -251,7 +251,7 @@ export const PredictionProvider = ({ children }) => {
                     predictionsData = response[arrayKeys[0]];
                     console.log(`Found array in property: ${arrayKeys[0]}`);
                 } else {
-                    console.warn('⚠️ No array found in response object:', response);
+                    console.warn('No array found in response object:', response);
                     predictionsData = [];
                 }
             } else {
@@ -435,7 +435,7 @@ export const PredictionProvider = ({ children }) => {
             // Update local state immediately for better UX
             setPredictions(prev => {
                 const updated = prev.filter(p => p.id !== predictionId);
-                console.log(`🔄 Updated predictions count: ${updated.length}`);
+                console.log(`Updated predictions count: ${updated.length}`);
                 return updated;
             });
 
@@ -521,7 +521,7 @@ export const PredictionProvider = ({ children }) => {
      * Refresh predictions data
      */
     const refreshPredictions = useCallback(async () => {
-        console.log('🔄 Refreshing predictions...');
+        console.log('Refreshing predictions...');
         await fetchPredictions();
     }, [fetchPredictions]);
 

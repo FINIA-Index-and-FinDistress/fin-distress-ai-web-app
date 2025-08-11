@@ -785,9 +785,9 @@ const AnalyticsTab = () => {
                                 <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
                                 <span>Live Analytics</span>
                             </div>
-                            <span>🤖 ML-Powered</span>
-                            <span>📊 Real-time Data</span>
-                            <span>⚡ Advanced Insights</span>
+                            <span>ML-Powered</span>
+                            <span>Real-time Data</span>
+                            <span>Advanced Insights</span>
                         </div>
                         <div className="flex items-center space-x-4 text-sm">
                             <span>Quality: <strong>{analyticsData.dataQuality}</strong></span>

@@ -235,8 +235,8 @@ const DashboardCharts = ({ data }) => {
             <div className="mt-8 p-4 bg-gray-50 rounded-xl border border-gray-200">
                 <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center space-x-4 text-gray-600">
-                        <span>📊 Data Quality: <strong>{processedData.dataQuality}</strong></span>
-                        <span>🕒 Last Updated: {new Date(processedData.lastUpdated).toLocaleString()}</span>
+                        <span>Data Quality: <strong>{processedData.dataQuality}</strong></span>
+                        <span>Last Updated: {new Date(processedData.lastUpdated).toLocaleString()}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-gray-500">
                         <span>Powered by Advanced ML Analytics</span>

@@ -104,7 +104,7 @@ export const AuthProvider = ({ children }) => {
         const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hour
 
         if (lastActivity && Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
-            console.log('🔒 Auto-logout due to inactivity');
+            console.log('Auto-logout due to inactivity');
             return false;
         }
         return true;
@@ -127,7 +127,7 @@ export const AuthProvider = ({ children }) => {
         setError(null);
 
         try {
-            console.log('🔑 Attempting sign in...');
+            console.log('Attempting sign in...');
 
             // Try JSON login first (matching your /api/v1/login endpoint)
             let response = await fetch(`${API_BASE}/login`, {
@@ -216,11 +216,11 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(true);
             setError(null);
 
-            console.log('✅ Sign in successful');
+            console.log('Sign in successful');
             return { success: true, user: userData };
 
         } catch (loginError) {
-            console.error('❌ Sign in failed:', loginError);
+            console.error('Sign in failed:', loginError);
             const errorMessage = loginError.message || 'Sign in failed';
             setError(errorMessage);
             return { success: false, error: errorMessage };
@@ -235,7 +235,7 @@ export const AuthProvider = ({ children }) => {
         setError(null);
 
         try {
-            console.log('📝 Attempting registration...');
+            console.log('Attempting registration...');
 
             // Register the user (matching your /api/v1/register endpoint)
             const registerResponse = await fetch(`${API_BASE}/register`, {
@@ -257,7 +257,7 @@ export const AuthProvider = ({ children }) => {
             }
 
             const registerData = await registerResponse.json();
-            console.log('✅ Registration successful, now signing in...');
+            console.log('Registration successful, now signing in...');
 
             // After successful registration, sign in the user
             const signInResult = await signIn(username, password);
@@ -273,7 +273,7 @@ export const AuthProvider = ({ children }) => {
             }
 
         } catch (registerError) {
-            console.error('❌ Registration failed:', registerError);
+            console.error('Registration failed:', registerError);
             const errorMessage = registerError.message || 'Registration failed';
             setError(errorMessage);
             return { success: false, error: errorMessage };
@@ -298,9 +298,9 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(false);
             setError(null);
 
-            console.log('🔒 Logout completed');
+            console.log('Logout completed');
         } catch (logoutError) {
-            console.error('❌ Logout error:', logoutError);
+            console.error('Logout error:', logoutError);
             // Still proceed with logout
             setUser(null);
             setAccessToken(null);
@@ -327,7 +327,7 @@ export const AuthProvider = ({ children }) => {
     // Initialize authentication state from storage
     const initializeAuth = useCallback(async () => {
         try {
-            console.log('🚀 Initializing authentication...');
+            console.log('Initializing authentication...');
 
             const storedToken = authStorage.get(authStorage.keys.ACCESS_TOKEN);
             const storedRefreshToken = authStorage.get(authStorage.keys.REFRESH_TOKEN);
@@ -335,7 +335,7 @@ export const AuthProvider = ({ children }) => {
             const storedExpiry = authStorage.get(authStorage.keys.TOKEN_EXPIRY);
 
             if (!storedToken || !storedUser) {
-                console.log('🔍 No stored auth data found');
+                console.log('No stored auth data found');
                 setLoading(false);
                 return;
             }
@@ -351,7 +351,7 @@ export const AuthProvider = ({ children }) => {
 
             // Check if token is expired
             if (storedExpiry && storedExpiry < now) {
-                console.log('🔄 Token expired, clearing auth data');
+                console.log('Token expired, clearing auth data');
                 authStorage.clear();
                 setLoading(false);
                 return;
@@ -363,10 +363,10 @@ export const AuthProvider = ({ children }) => {
             setRefreshToken(storedRefreshToken || '');
             setIsAuthenticated(true);
 
-            console.log('✅ Authentication restored from storage');
+            console.log('Authentication restored from storage');
 
         } catch (initError) {
-            console.error('❌ Auth initialization failed:', initError);
+            console.error('Auth initialization failed:', initError);
             authStorage.clear();
         } finally {
             setLoading(false);
@@ -375,7 +375,7 @@ export const AuthProvider = ({ children }) => {
 
     // Initialize auth on mount
     useEffect(() => {
-        console.log('🚀 AuthProvider mounting...');
+        console.log('AuthProvider mounting...');
         initializeAuth();
 
         // Set up activity monitoring
@@ -390,7 +390,7 @@ export const AuthProvider = ({ children }) => {
         });
 
         return () => {
-            console.log('🧹 AuthProvider unmounting...');
+            console.log('AuthProvider unmounting...');
             events.forEach(event => {
                 document.removeEventListener(event, handleActivity);
             });
