@@ -14,6 +14,8 @@ const AuthContext = createContext({
         accessToken: null
     },
     login: () => Promise.resolve({ success: false }),
+    signIn: () => Promise.resolve({ success: false }),
+    signUp: () => Promise.resolve({ success: false }),
     logout: () => { },
     getAuthHeaders: () => ({ 'Content-Type': 'application/json' }),
     updateActivity: () => { },
@@ -79,7 +81,7 @@ const authStorage = {
     }
 };
 
-// FIXED: AuthProvider component based on your endpoints.py structure
+// FIXED: AuthProvider component with proper signIn/signUp methods
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [accessToken, setAccessToken] = useState(null);
@@ -99,7 +101,7 @@ export const AuthProvider = ({ children }) => {
     // Check inactivity (1 hour timeout matching your backend)
     const checkInactivity = useCallback(() => {
         const lastActivity = authStorage.get(authStorage.keys.LAST_ACTIVITY);
-        const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hour as per your requirements
+        const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hour
 
         if (lastActivity && Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
             console.log('🔒 Auto-logout due to inactivity');
@@ -119,13 +121,13 @@ export const AuthProvider = ({ children }) => {
         };
     }, [accessToken]);
 
-    // Login function matching your endpoints.py login flow
-    const login = useCallback(async (credentials) => {
+    // FIXED: Sign In function (for login)
+    const signIn = useCallback(async (username, password) => {
         setLoading(true);
         setError(null);
 
         try {
-            console.log('🔑 Attempting login...');
+            console.log('🔑 Attempting sign in...');
 
             // Try JSON login first (matching your /api/v1/login endpoint)
             let response = await fetch(`${API_BASE}/login`, {
@@ -134,8 +136,8 @@ export const AuthProvider = ({ children }) => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    username: credentials.username,
-                    password: credentials.password
+                    username: username.trim(),
+                    password: password
                 })
             });
 
@@ -146,8 +148,8 @@ export const AuthProvider = ({ children }) => {
                 // Try form data login (matching your /api/v1/token endpoint)
                 console.log('Trying form data login...');
                 const formData = new URLSearchParams();
-                formData.append('username', credentials.username);
-                formData.append('password', credentials.password);
+                formData.append('username', username.trim());
+                formData.append('password', password);
 
                 response = await fetch(`${API_BASE}/token`, {
                     method: 'POST',
@@ -159,7 +161,7 @@ export const AuthProvider = ({ children }) => {
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.detail || `Login failed: ${response.status}`);
+                    throw new Error(errorData.detail || 'Invalid username or password');
                 }
 
                 data = await response.json();
@@ -167,9 +169,9 @@ export const AuthProvider = ({ children }) => {
 
             // Get user profile (matching your /api/v1/users/me endpoint)
             let userData = {
-                username: credentials.username,
+                username: username.trim(),
                 email: '',
-                full_name: credentials.username,
+                full_name: username.trim(),
                 is_admin: false,
                 is_active: true
             };
@@ -188,10 +190,9 @@ export const AuthProvider = ({ children }) => {
                 console.warn('Failed to fetch user profile, using defaults:', userError);
             }
 
-            // FIXED: Calculate token expiry safely
+            // Calculate token expiry safely
             let tokenExpiry = Date.now() + (2 * 60 * 60 * 1000); // Default 2 hours
 
-            // Check if expires_in exists and is a number
             if (data.expires_in && typeof data.expires_in === 'number') {
                 tokenExpiry = Date.now() + (data.expires_in * 1000);
             } else if (data.expires_in && typeof data.expires_in === 'string') {
@@ -215,18 +216,74 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(true);
             setError(null);
 
-            console.log('✅ Login successful');
+            console.log('✅ Sign in successful');
             return { success: true, user: userData };
 
         } catch (loginError) {
-            console.error('❌ Login failed:', loginError);
-            const errorMessage = loginError.message || 'Login failed';
+            console.error('❌ Sign in failed:', loginError);
+            const errorMessage = loginError.message || 'Sign in failed';
             setError(errorMessage);
             return { success: false, error: errorMessage };
         } finally {
             setLoading(false);
         }
     }, [API_BASE]);
+
+    // FIXED: Sign Up function (for registration)
+    const signUp = useCallback(async (username, email, password, fullName) => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            console.log('📝 Attempting registration...');
+
+            // Register the user (matching your /api/v1/register endpoint)
+            const registerResponse = await fetch(`${API_BASE}/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username.trim(),
+                    email: email.trim(),
+                    password: password,
+                    full_name: fullName?.trim() || username.trim()
+                })
+            });
+
+            if (!registerResponse.ok) {
+                const errorData = await registerResponse.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Registration failed');
+            }
+
+            const registerData = await registerResponse.json();
+            console.log('✅ Registration successful, now signing in...');
+
+            // After successful registration, sign in the user
+            const signInResult = await signIn(username, password);
+
+            if (signInResult.success) {
+                return { success: true, user: signInResult.user };
+            } else {
+                // Registration succeeded but sign in failed
+                return {
+                    success: false,
+                    error: 'Registration successful but sign in failed. Please try signing in manually.'
+                };
+            }
+
+        } catch (registerError) {
+            console.error('❌ Registration failed:', registerError);
+            const errorMessage = registerError.message || 'Registration failed';
+            setError(errorMessage);
+            return { success: false, error: errorMessage };
+        } finally {
+            setLoading(false);
+        }
+    }, [API_BASE, signIn]);
+
+    // Alias login to signIn for compatibility
+    const login = signIn;
 
     // Logout function
     const logout = useCallback(() => {
@@ -351,7 +408,9 @@ export const AuthProvider = ({ children }) => {
         refreshToken,
 
         // Actions
-        login,
+        login,      // Alias for signIn
+        signIn,     // Main sign in function
+        signUp,     // Sign up function
         logout,
         updateUser,
         clearError,
@@ -381,7 +440,7 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-// FIXED: useAuth hook with safe error handling
+// FIXED: useAuth hook with all methods
 export const useAuth = () => {
     const context = useContext(AuthContext);
 
@@ -396,6 +455,8 @@ export const useAuth = () => {
             accessToken: null,
             refreshToken: null,
             login: () => Promise.resolve({ success: false, error: 'AuthProvider not found' }),
+            signIn: () => Promise.resolve({ success: false, error: 'AuthProvider not found' }),
+            signUp: () => Promise.resolve({ success: false, error: 'AuthProvider not found' }),
             logout: () => { },
             updateUser: () => { },
             clearError: () => { },
