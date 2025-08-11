@@ -18,24 +18,33 @@ export const PredictionProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    const { authState } = useAuth();
+    // FIXED: Get auth data properly - destructure what we need
+    const { user, isAuthenticated, accessToken, authState, getAuthHeaders: getAuthHeadersFromContext } = useAuth();
     const { addNotification } = useNotifications();
 
-    // CRITICAL FIX: API base URL with correct endpoint including /api/v1
+    // API base URL with correct endpoint including /api/v1
     const API_BASE = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
 
     /**
-     * Get auth headers
+     * FIXED: Get auth headers properly
      */
     const getAuthHeaders = useCallback(() => {
         const headers = {
             'Content-Type': 'application/json'
         };
-        if (authState.token) {
-            headers.Authorization = `Bearer ${authState.token}`;
+
+        // FIXED: Try multiple ways to get the token
+        let token = accessToken || authState?.accessToken || authState?.token;
+
+        if (token) {
+            headers.Authorization = `Bearer ${token}`;
+        } else if (typeof getAuthHeadersFromContext === 'function') {
+            // Use the getAuthHeaders function from AuthContext if available
+            return getAuthHeadersFromContext();
         }
+
         return headers;
-    }, [authState.token]);
+    }, [accessToken, authState, getAuthHeadersFromContext]);
 
     /**
      * Enhanced API call wrapper with better error handling and retry logic
@@ -47,15 +56,17 @@ export const PredictionProvider = ({ children }) => {
             try {
                 const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
 
+                const headers = getAuthHeaders();
                 const config = {
+                    ...options,
                     headers: {
-                        ...getAuthHeaders(),
+                        ...headers,
                         ...options.headers
-                    },
-                    ...options
+                    }
                 };
 
                 console.log(`API call attempt ${attempt + 1} to: ${url}`);
+                console.log(`Using auth token: ${headers.Authorization ? 'Yes' : 'No'}`);
 
                 const response = await fetch(url, config);
 
@@ -69,8 +80,13 @@ export const PredictionProvider = ({ children }) => {
                     }
 
                     // Don't retry on authentication errors
-                    if (response.status === 401 || response.status === 403) {
-                        throw new Error(errorMessage);
+                    if (response.status === 401) {
+                        console.error('401 Unauthorized - Token may be invalid or missing');
+                        throw new Error('Not authenticated');
+                    }
+
+                    if (response.status === 403) {
+                        throw new Error('Access denied');
                     }
 
                     // Retry on server errors
@@ -92,8 +108,11 @@ export const PredictionProvider = ({ children }) => {
                 console.error(`API call failed for ${endpoint} (attempt ${attempt + 1}):`, error);
 
                 // Don't retry on client errors
-                if (error.message.includes('401') || error.message.includes('403') ||
-                    error.message.includes('422') || error.message.includes('400')) {
+                if (error.message === 'Not authenticated' ||
+                    error.message.includes('401') ||
+                    error.message.includes('403') ||
+                    error.message.includes('422') ||
+                    error.message.includes('400')) {
                     break;
                 }
 
@@ -112,8 +131,8 @@ export const PredictionProvider = ({ children }) => {
         // Enhanced error messages
         if (lastError.name === 'TypeError' && lastError.message.includes('fetch')) {
             throw new Error('Unable to connect to the server. Please check your internet connection.');
-        } else if (lastError.message.includes('401')) {
-            throw new Error('Token has expired');
+        } else if (lastError.message === 'Not authenticated' || lastError.message.includes('401')) {
+            throw new Error('Not authenticated');
         } else if (lastError.message.includes('403')) {
             throw new Error('Access denied. You may not have permission for this action.');
         } else if (lastError.message.includes('404')) {
@@ -129,8 +148,15 @@ export const PredictionProvider = ({ children }) => {
      * Generate prediction with enhanced error handling
      */
     const generatePrediction = useCallback(async (inputData, region = 'AFR') => {
-        if (!authState.isAuthenticated) {
+        // FIXED: Check authentication properly
+        if (!isAuthenticated || !user) {
             throw new Error('Authentication required to generate predictions');
+        }
+
+        // FIXED: Check for token
+        const token = accessToken || authState?.accessToken || authState?.token;
+        if (!token) {
+            throw new Error('Authentication token not found. Please sign in again.');
         }
 
         setIsLoading(true);
@@ -207,21 +233,29 @@ export const PredictionProvider = ({ children }) => {
         } finally {
             setIsLoading(false);
         }
-    }, [authState.isAuthenticated, apiCall, addNotification]);
+    }, [isAuthenticated, user, accessToken, authState, apiCall, addNotification]);
 
     /**
      * Fetch predictions history with FIXED data handling
      */
     const fetchPredictions = useCallback(async () => {
-        if (!authState.isAuthenticated) {
+        // FIXED: Check authentication properly
+        if (!isAuthenticated || !user) {
             console.log('User not authenticated, clearing predictions...');
             setPredictions([]);
             return;
         }
 
+        // FIXED: Check for token
+        const token = accessToken || authState?.accessToken || authState?.token;
+        if (!token) {
+            console.log('No auth token available, skipping fetch...');
+            return;
+        }
+
         try {
             setError(null);
-            console.log('Fetching predictions...');
+            console.log('🔄 Fetching predictions...');
 
             const response = await apiCall('/predictions/history?limit=20', {}, 1);
 
@@ -229,7 +263,7 @@ export const PredictionProvider = ({ children }) => {
             console.log('Response type:', typeof response);
             console.log('Is Array:', Array.isArray(response));
 
-            // FIXED: Handle different response formats safely
+            // Handle different response formats safely
             let predictionsData = [];
 
             if (Array.isArray(response)) {
@@ -332,24 +366,48 @@ export const PredictionProvider = ({ children }) => {
             });
 
             setPredictions(transformedPredictions);
-            console.log('Predictions processed successfully:', transformedPredictions.length);
+            console.log('✅ Predictions processed successfully:', transformedPredictions.length);
 
         } catch (error) {
             console.error('Failed to fetch predictions:', error);
             setError(error);
             setPredictions([]); // Always set empty array on error
             // Don't show notification for silent failures during component mount
-            if (error.message && !error.message.includes('Token has expired')) {
+            if (error.message && error.message !== 'Not authenticated') {
                 console.log('Showing error notification for:', error.message);
             }
         }
-    }, [authState.isAuthenticated, apiCall]);
+    }, [isAuthenticated, user, accessToken, authState, apiCall]);
+
+    // ... rest of your code remains the same ...
+
+    /**
+     * Load predictions when user authentication changes
+     */
+    useEffect(() => {
+        // FIXED: Check for both authentication and token
+        if (isAuthenticated && user && (accessToken || authState?.accessToken || authState?.token)) {
+            console.log('User authenticated, loading predictions...');
+            // Add small delay to ensure token is properly set
+            const timer = setTimeout(() => {
+                fetchPredictions();
+            }, 100);
+            return () => clearTimeout(timer);
+        } else {
+            console.log('User not authenticated, clearing predictions...');
+            setPredictions([]);
+            setCurrentPrediction(null);
+            setError(null);
+        }
+    }, [isAuthenticated, user, accessToken, authState, fetchPredictions]);
+
+    // ... rest of your methods remain the same ...
 
     /**
      * Get prediction details
      */
     const getPredictionDetails = useCallback(async (predictionId) => {
-        if (!authState.isAuthenticated) {
+        if (!isAuthenticated || !user) {
             throw new Error('Authentication required');
         }
 
@@ -408,13 +466,13 @@ export const PredictionProvider = ({ children }) => {
             console.error('Failed to get prediction details:', error);
             throw new Error(error.message || 'Failed to load prediction details');
         }
-    }, [authState.isAuthenticated, apiCall]);
+    }, [isAuthenticated, user, apiCall]);
 
     /**
      * Delete prediction with proper error handling
      */
     const deletePrediction = useCallback(async (predictionId) => {
-        if (!authState.isAuthenticated) {
+        if (!isAuthenticated || !user) {
             throw new Error('Authentication required');
         }
 
@@ -453,13 +511,13 @@ export const PredictionProvider = ({ children }) => {
             addNotification(error.message || 'Failed to delete prediction', 'error');
             throw error;
         }
-    }, [authState.isAuthenticated, apiCall, currentPrediction, addNotification]);
+    }, [isAuthenticated, user, apiCall, currentPrediction, addNotification]);
 
     /**
      * Clear all predictions
      */
     const clearPredictions = useCallback(async () => {
-        if (!authState.isAuthenticated) {
+        if (!isAuthenticated || !user) {
             throw new Error('Authentication required');
         }
 
@@ -486,22 +544,7 @@ export const PredictionProvider = ({ children }) => {
             addNotification(error.message || 'Failed to clear predictions', 'error');
             throw error;
         }
-    }, [authState.isAuthenticated, apiCall, addNotification]);
-
-    /**
-     * Load predictions when user authentication changes
-     */
-    useEffect(() => {
-        if (authState.isAuthenticated) {
-            console.log('User authenticated, loading predictions...');
-            fetchPredictions();
-        } else {
-            console.log('User not authenticated, clearing predictions...');
-            setPredictions([]);
-            setCurrentPrediction(null);
-            setError(null);
-        }
-    }, [authState.isAuthenticated, fetchPredictions]);
+    }, [isAuthenticated, user, apiCall, addNotification]);
 
     /**
      * Test server connectivity
@@ -550,9 +593,11 @@ export const PredictionProvider = ({ children }) => {
             count: predictions.length,
             isLoading,
             hasError: !!error,
-            isAuthenticated: authState.isAuthenticated
+            isAuthenticated,
+            hasUser: !!user,
+            hasToken: !!(accessToken || authState?.accessToken || authState?.token)
         });
-    }, [predictions, isLoading, error, authState.isAuthenticated]);
+    }, [predictions, isLoading, error, isAuthenticated, user, accessToken, authState]);
 
     const value = {
         // State
