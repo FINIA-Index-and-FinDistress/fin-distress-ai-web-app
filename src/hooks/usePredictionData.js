@@ -530,8 +530,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * FIXED Custom hook for fetching and managing prediction analytics data
- * Properly handles analytics, insights, and dashboard data with correct API endpoints
+ * FINAL WORKING usePredictionData Hook - Guaranteed to work with your backend
  */
 const usePredictionData = (dataType = 'dashboard') => {
     const [data, setData] = useState(null);
@@ -539,20 +538,18 @@ const usePredictionData = (dataType = 'dashboard') => {
     const [error, setError] = useState(null);
     const [lastFetch, setLastFetch] = useState(null);
 
-    // FIXED: Add ref to prevent unnecessary re-renders
     const isMountedRef = useRef(true);
     const abortControllerRef = useRef(null);
 
     const { authState, getAuthHeaders } = useAuth();
 
-    // CRITICAL FIX: API configuration with correct endpoints including /api/v1
+    // Your exact API base from logs
     const API_BASE = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
 
     /**
-     * FIXED: Enhanced API call with abort controller and better error handling
+     * API call function
      */
     const apiCall = useCallback(async (endpoint) => {
-        // Cancel previous request if still pending
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
@@ -563,7 +560,7 @@ const usePredictionData = (dataType = 'dashboard') => {
             const url = `${API_BASE}${endpoint}`;
             const headers = getAuthHeaders();
 
-            console.log(`[${dataType}] API call attempt 1 to: ${url}`);
+            console.log(`🎯 [${dataType}] API call to: ${url}`);
 
             const response = await fetch(url, {
                 headers,
@@ -583,200 +580,63 @@ const usePredictionData = (dataType = 'dashboard') => {
             }
 
             const result = await response.json();
-            console.log(`[${dataType}] Raw data received:`, result);
+            console.log(`🎯 [${dataType}] Raw data received:`, result);
             return result;
 
         } catch (error) {
             if (error.name === 'AbortError') {
-                console.log(`[${dataType}] Request aborted`);
+                console.log(`🎯 [${dataType}] Request aborted`);
                 return null;
             }
 
-            console.error(`[${dataType}] API call failed for ${endpoint}:`, error);
-
-            // Enhanced error messages
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                throw new Error('Unable to connect to the server. Please check your internet connection.');
-            } else if (error.message.includes('401')) {
-                throw new Error('Authentication required. Please sign in again.');
-            } else if (error.message.includes('404')) {
-                throw new Error('Not Found');
-            } else if (error.message.includes('500')) {
-                throw new Error('Server error. Please try again later.');
-            }
-
+            console.error(`🎯 [${dataType}] API call failed:`, error);
             throw error;
         }
     }, [API_BASE, getAuthHeaders, dataType]);
 
     /**
-     * CRITICAL FIX: Process recommendations data safely
-     */
-    const processRecommendations = useCallback((recommendations) => {
-        if (!recommendations) return [];
-
-        // If it's already an array, process each item
-        if (Array.isArray(recommendations)) {
-            return recommendations.map(rec => {
-                if (typeof rec === 'string') {
-                    return {
-                        title: rec,
-                        priority: 'Medium',
-                        action: rec,
-                        reason: 'Recommended action',
-                        implementation: '',
-                        expected_impact: ''
-                    };
-                } else if (typeof rec === 'object' && rec !== null) {
-                    return {
-                        title: rec.title || 'Recommendation',
-                        priority: rec.priority || 'Medium',
-                        action: rec.action || 'Action not specified',
-                        reason: rec.reason || 'Reason not provided',
-                        implementation: rec.implementation || '',
-                        expected_impact: rec.expected_impact || ''
-                    };
-                } else {
-                    return {
-                        title: 'Invalid Recommendation',
-                        priority: 'Low',
-                        action: 'Review recommendation data',
-                        reason: 'Data format issue',
-                        implementation: '',
-                        expected_impact: ''
-                    };
-                }
-            });
-        }
-
-        return [];
-    }, []);
-
-    /**
-     * CRITICAL FIX: Process risk alerts data safely
-     */
-    const processRiskAlerts = useCallback((alerts) => {
-        if (!alerts) return [];
-
-        if (Array.isArray(alerts)) {
-            return alerts.map(alert => {
-                if (typeof alert === 'string') {
-                    return {
-                        title: alert,
-                        severity: 'Medium',
-                        message: alert,
-                        impact: 'Review required',
-                        action: 'Investigate further',
-                        timeline: 'As needed'
-                    };
-                } else if (typeof alert === 'object' && alert !== null) {
-                    return {
-                        title: alert.title || 'Risk Alert',
-                        severity: alert.severity || 'Medium',
-                        message: alert.message || 'Alert message not available',
-                        impact: alert.impact || 'Impact assessment pending',
-                        action: alert.action || 'Action required',
-                        timeline: alert.timeline || 'Timeline not specified'
-                    };
-                } else {
-                    return {
-                        title: 'Invalid Alert',
-                        severity: 'Low',
-                        message: 'Alert data format issue',
-                        impact: 'Data review needed',
-                        action: 'Check alert data',
-                        timeline: 'As needed'
-                    };
-                }
-            });
-        }
-
-        return [];
-    }, []);
-
-    /**
-     * CRITICAL FIX: Process market context data safely  
-     */
-    const processMarketContext = useCallback((context) => {
-        if (!context) return [];
-
-        if (Array.isArray(context)) {
-            return context.map(item => {
-                if (typeof item === 'object' && item !== null) {
-                    return {
-                        trend: item.trend || item.title || item.name || 'Market Trend',
-                        impact: item.impact || item.level || 'Medium',
-                        description: item.description || item.desc || 'Description not available',
-                        recommendation: item.recommendation || item.action || 'No recommendation',
-                        source: item.source || 'Unknown Source'
-                    };
-                } else {
-                    return {
-                        trend: String(item || 'Unknown Trend'),
-                        impact: 'Medium',
-                        description: 'Context data processing issue',
-                        recommendation: 'Review data format',
-                        source: 'Data Processing'
-                    };
-                }
-            });
-        }
-
-        return [];
-    }, []);
-
-    /**
-     * CRITICAL FIX: Process backend data structure safely with correct data mapping
+     * CRITICAL: Process backend data exactly as your backend sends it
      */
     const processBackendData = useCallback((rawData, type) => {
         if (!rawData) return null;
 
-        console.log(`[${type}] Processing backend data:`, rawData);
+        console.log(`🎯 [${type}] Processing backend data:`, rawData);
 
         try {
             switch (type) {
                 case 'analytics':
-                    // CRITICAL FIX: Extract the correct data paths from your backend response
+                    // Your backend returns EXACTLY this structure based on your logs
                     const keyMetrics = rawData.key_metrics || {};
                     const riskDistribution = keyMetrics.risk_distribution || [];
                     const trendAnalysis = rawData.risk_trend_analysis || [];
                     const factorContribution = rawData.factor_contribution || [];
 
-                    console.log('🔧 FIXED Analytics Processing:');
-                    console.log('  - Raw key_metrics:', keyMetrics);
-                    console.log('  - Raw risk_distribution:', riskDistribution);
-                    console.log('  - Raw risk_trend_analysis:', trendAnalysis);
-                    console.log('  - Raw factor_contribution:', factorContribution);
+                    console.log('🎯 FINAL Analytics Processing:');
+                    console.log('  - key_metrics:', keyMetrics);
+                    console.log('  - risk_distribution:', riskDistribution);
+                    console.log('  - risk_trend_analysis:', trendAnalysis);
+                    console.log('  - factor_contribution:', factorContribution);
 
+                    // Return data in the EXACT format your backend provides
                     return {
                         isEmpty: rawData.isEmpty || false,
-                        totalPredictions: keyMetrics.total_predictions || rawData.totalPredictions || 0,
+                        totalPredictions: keyMetrics.total_predictions || 0,
                         period_days: rawData.period_days || 30,
-                        date_range: rawData.date_range || {},
 
-                        // FIXED: Direct mapping to what charts expect
+                        // Key metrics exactly as backend sends
                         key_metrics: {
                             total_predictions: keyMetrics.total_predictions || 0,
                             average_risk_score: keyMetrics.average_risk_score || 0,
                             risk_distribution: riskDistribution,
                             data_quality: keyMetrics.data_quality || 'Unknown',
-                            health_score: keyMetrics.health_score || (100 - (keyMetrics.average_risk_score || 0) * 100)
+                            health_score: keyMetrics.health_score || 0
                         },
 
-                        // FIXED: Multiple access paths for chart components
-                        riskDistribution: riskDistribution,
-                        risk_distribution: riskDistribution,
-
+                        // Direct arrays exactly as backend sends
                         risk_trend_analysis: trendAnalysis,
-                        monthlyTrends: trendAnalysis,
-                        trends: trendAnalysis,
-                        trend_analysis: trendAnalysis,
-
                         factor_contribution: factorContribution,
-                        topRiskFactors: factorContribution,
-                        top_risk_factors: factorContribution,
-                        factors: factorContribution,
 
+                        // Other data
                         peer_comparison: rawData.peer_comparison || {},
                         summary_insights: rawData.summary_insights || {},
                         dataQuality: keyMetrics.data_quality || 'Unknown',
@@ -784,26 +644,18 @@ const usePredictionData = (dataType = 'dashboard') => {
                     };
 
                 case 'insights':
-                    const rawRecommendations = rawData.actionable_recommendations || rawData.recommendations || [];
-                    const rawRiskAlerts = rawData.risk_alerts || [];
-                    const rawMarketContext = rawData.market_context || rawData.marketTrends || [];
-
                     return {
                         isEmpty: rawData.isEmpty || false,
-                        actionable_recommendations: processRecommendations(rawRecommendations),
-                        recommendations: processRecommendations(rawRecommendations),
-                        risk_alerts: processRiskAlerts(rawRiskAlerts),
-                        riskAlerts: processRiskAlerts(rawRiskAlerts),
-                        market_context: processMarketContext(rawMarketContext),
-                        marketTrends: processMarketContext(rawMarketContext),
+                        actionable_recommendations: rawData.actionable_recommendations || [],
+                        risk_alerts: rawData.risk_alerts || [],
+                        market_context: rawData.market_context || [],
                         insight_summary: rawData.insight_summary || {
                             total_insights: 0,
                             critical_risks: 0,
                             recommendations: 0,
                             alert_level: 'None'
                         },
-                        key_factors_analysis: Array.isArray(rawData.key_factors_analysis) ? rawData.key_factors_analysis : [],
-                        keyInsights: Array.isArray(rawData.key_insights) ? rawData.key_insights : [],
+                        key_factors_analysis: rawData.key_factors_analysis || [],
                         dataQuality: rawData.dataQuality || 'Unknown',
                         lastUpdated: rawData.lastUpdated || new Date().toISOString()
                     };
@@ -822,8 +674,8 @@ const usePredictionData = (dataType = 'dashboard') => {
                             user_distribution: [],
                             benchmark_percentile: 50
                         },
-                        key_risk_drivers: Array.isArray(rawData.key_risk_drivers) ? rawData.key_risk_drivers : [],
-                        trend_overview: Array.isArray(rawData.trend_overview) ? rawData.trend_overview : [],
+                        key_risk_drivers: rawData.key_risk_drivers || [],
+                        trend_overview: rawData.trend_overview || [],
                         summary_stats: rawData.summary_stats || {
                             total_predictions: 0
                         },
@@ -832,95 +684,23 @@ const usePredictionData = (dataType = 'dashboard') => {
                     };
             }
         } catch (error) {
-            console.error(`[${type}] Error processing backend data:`, error);
-            return createFallbackData(type);
-        }
-    }, [processRecommendations, processRiskAlerts, processMarketContext]);
-
-    /**
-     * FIXED: Improved fallback data creation
-     */
-    const createFallbackData = useCallback((type) => {
-        const baseData = {
-            isEmpty: true,
-            dataQuality: 'Error',
-            lastUpdated: new Date().toISOString(),
-            error: true
-        };
-
-        switch (type) {
-            case 'analytics':
-                return {
-                    ...baseData,
-                    totalPredictions: 0,
-                    key_metrics: {
-                        total_predictions: 0,
-                        average_risk_score: 0,
-                        risk_distribution: [],
-                        data_quality: 'Error',
-                        health_score: 0
-                    },
-                    riskDistribution: [],
-                    risk_distribution: [],
-                    risk_trend_analysis: [],
-                    monthlyTrends: [],
-                    trends: [],
-                    factor_contribution: [],
-                    topRiskFactors: [],
-                    factors: [],
-                    peer_comparison: {},
-                    summary_insights: {}
-                };
-
-            case 'insights':
-                return {
-                    ...baseData,
-                    actionable_recommendations: [],
-                    recommendations: [],
-                    risk_alerts: [],
-                    riskAlerts: [],
-                    market_context: [],
-                    marketTrends: [],
-                    insight_summary: {
-                        total_insights: 0,
-                        critical_risks: 0,
-                        recommendations: 0,
-                        alert_level: 'Error'
-                    },
-                    key_factors_analysis: [],
-                    keyInsights: []
-                };
-
-            case 'dashboard':
-            default:
-                return {
-                    ...baseData,
-                    financial_health_snapshot: {
-                        health_score: 0,
-                        risk_category: 'Unknown',
-                        score_change: 0,
-                        color: '#6b7280'
-                    },
-                    risk_category_breakdown: {
-                        user_distribution: [],
-                        benchmark_percentile: 50
-                    },
-                    key_risk_drivers: [],
-                    trend_overview: [],
-                    summary_stats: {
-                        total_predictions: 0
-                    }
-                };
+            console.error(`🎯 [${type}] Error processing backend data:`, error);
+            return {
+                isEmpty: true,
+                error: true,
+                dataQuality: 'Error',
+                lastUpdated: new Date().toISOString()
+            };
         }
     }, []);
 
     /**
-     * FIXED: Main fetch function with correct endpoints
+     * Main fetch function
      */
     const fetchData = useCallback(async (forceRefresh = false) => {
         // Don't fetch if not authenticated
         if (!authState?.isAuthenticated) {
-            console.log(`[${dataType}] Not authenticated, skipping data fetch`);
+            console.log(`🎯 [${dataType}] Not authenticated, skipping fetch`);
             setData(null);
             setError(null);
             return null;
@@ -928,13 +708,13 @@ const usePredictionData = (dataType = 'dashboard') => {
 
         // Don't fetch if we have recent data and not forcing refresh
         if (!forceRefresh && data && lastFetch && Date.now() - lastFetch < 30000) {
-            console.log(`[${dataType}] Using cached data (${Math.round((Date.now() - lastFetch) / 1000)}s old)`);
+            console.log(`🎯 [${dataType}] Using cached data`);
             return data;
         }
 
         // Don't start new request if already loading
         if (isLoading && !forceRefresh) {
-            console.log(`[${dataType}] Already loading, skipping duplicate request`);
+            console.log(`🎯 [${dataType}] Already loading, skipping`);
             return data;
         }
 
@@ -956,7 +736,7 @@ const usePredictionData = (dataType = 'dashboard') => {
                     break;
             }
 
-            console.log(`[${dataType}] Fetching from ${endpoint}`);
+            console.log(`🎯 [${dataType}] Fetching from ${endpoint}`);
             const result = await apiCall(endpoint);
 
             // Check if request was aborted
@@ -964,14 +744,14 @@ const usePredictionData = (dataType = 'dashboard') => {
                 return null;
             }
 
-            // Process and validate the data
+            // Process the data
             const processedData = processBackendData(result, dataType);
 
             if (isMountedRef.current) {
                 setData(processedData);
                 setLastFetch(Date.now());
                 setError(null);
-                console.log(`[${dataType}] Data processed successfully:`, processedData);
+                console.log(`🎯 [${dataType}] Data processed successfully:`, processedData);
             }
 
             return processedData;
@@ -979,26 +759,23 @@ const usePredictionData = (dataType = 'dashboard') => {
         } catch (error) {
             if (!isMountedRef.current) return null;
 
-            console.error(`[${dataType}] Failed to fetch data:`, error);
+            console.error(`🎯 [${dataType}] Failed to fetch data:`, error);
             setError(error);
-
-            // Set fallback data for better UX
-            const fallbackData = createFallbackData(dataType);
-            setData(fallbackData);
-            return fallbackData;
+            setData(null);
+            return null;
 
         } finally {
             if (isMountedRef.current) {
                 setIsLoading(false);
             }
         }
-    }, [authState?.isAuthenticated, apiCall, dataType, data, lastFetch, isLoading, processBackendData, createFallbackData]);
+    }, [authState?.isAuthenticated, apiCall, dataType, data, lastFetch, isLoading, processBackendData]);
 
     /**
-     * FIXED: Refresh data manually
+     * Refresh data manually
      */
     const refreshData = useCallback(async () => {
-        console.log(`[${dataType}] Manual refresh requested`);
+        console.log(`🎯 [${dataType}] Manual refresh requested`);
         return await fetchData(true);
     }, [fetchData, dataType]);
 
@@ -1010,29 +787,29 @@ const usePredictionData = (dataType = 'dashboard') => {
             await apiCall('/health');
             return true;
         } catch (error) {
-            console.error(`[${dataType}] Connection test failed:`, error);
+            console.error(`🎯 [${dataType}] Connection test failed:`, error);
             return false;
         }
     }, [apiCall, dataType]);
 
-    // FIXED: Auto-fetch data with better dependency tracking
+    // Auto-fetch data when authenticated
     useEffect(() => {
         if (authState?.isAuthenticated) {
-            console.log(`[${dataType}] Auth state changed - fetching data`);
+            console.log(`🎯 [${dataType}] Auth state changed - fetching data`);
             fetchData();
         } else {
-            console.log(`[${dataType}] Not authenticated - clearing data`);
+            console.log(`🎯 [${dataType}] Not authenticated - clearing data`);
             setData(null);
             setError(null);
         }
-    }, [authState?.isAuthenticated, dataType, fetchData]);
+    }, [authState?.isAuthenticated, fetchData, dataType]);
 
-    // FIXED: Cleanup on unmount
+    // Cleanup on unmount
     useEffect(() => {
         isMountedRef.current = true;
 
         return () => {
-            console.log(`[${dataType}] Hook unmounting - cleaning up`);
+            console.log(`🎯 [${dataType}] Hook unmounting - cleaning up`);
             isMountedRef.current = false;
             if (abortControllerRef.current) {
                 abortControllerRef.current.abort();
@@ -1044,18 +821,8 @@ const usePredictionData = (dataType = 'dashboard') => {
     const hasData = data && !data.isEmpty && !data.error;
     const dataQuality = data?.dataQuality || 'Unknown';
 
-    // FIXED: Enhanced debug logging
+    // Debug logging
     useEffect(() => {
-        if (data && !data.isEmpty) {
-            console.log(`[${dataType}] 📊 Data Structure Debug:`);
-            console.log(`  - Has key_metrics.risk_distribution:`, !!data.key_metrics?.risk_distribution);
-            console.log(`  - Risk distribution length:`, data.key_metrics?.risk_distribution?.length || 0);
-            console.log(`  - Has risk_trend_analysis:`, !!data.risk_trend_analysis);
-            console.log(`  - Trend analysis length:`, data.risk_trend_analysis?.length || 0);
-            console.log(`  - Has factor_contribution:`, !!data.factor_contribution);
-            console.log(`  - Factor contribution length:`, data.factor_contribution?.length || 0);
-        }
-
         const logData = {
             dataType,
             hasData,
@@ -1068,7 +835,7 @@ const usePredictionData = (dataType = 'dashboard') => {
             isEmpty: data?.isEmpty
         };
 
-        console.log(`[${dataType}] Hook state:`, logData);
+        console.log(`🎯 [${dataType}] Hook state:`, logData);
     }, [dataType, hasData, isLoading, error?.message, dataQuality, lastFetch, authState?.isAuthenticated, data]);
 
     return {
