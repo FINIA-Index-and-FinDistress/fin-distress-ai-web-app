@@ -471,13 +471,234 @@ const EnhancedInsightsTab = ({ setShowAuthModal }) => {
         </div>
     );
 };
+// /**
+//  * Main application content component with navigation handling
+//  */
+// const AppContent = () => {
+//     const [showAuthModal, setShowAuthModal] = useState(false);
+//     const [isInitialized, setIsInitialized] = useState(false);
+//     const { user, loading, error: authError } = useAuth();
+//     const location = useLocation();
+//     const navigate = useNavigate();
+
+//     // Determine active tab based on current route
+//     const getActiveTabFromRoute = (pathname) => {
+//         if (pathname === '/' || pathname === '/predict') return 'predict';
+//         if (pathname === '/analytics') return 'analytics';
+//         if (pathname === '/insights') return 'insights';
+//         return 'predict';
+//     };
+
+//     const activeTab = getActiveTabFromRoute(location.pathname);
+
+//     // Initialize application and handle authentication state
+//     useEffect(() => {
+//         const initializeApp = async () => {
+//             try {
+//                 // Check if user should see welcome screen (first time visitor)
+//                 const hasVisited = localStorage.getItem('hasVisited');
+
+//                 if (!loading) {
+//                     if (!user && !hasVisited) {
+//                         // First time visitor - show welcome then auth
+//                         localStorage.setItem('hasVisited', 'true');
+//                     }
+
+//                     if (!user) {
+//                         setShowAuthModal(false); // Let WelcomeScreen handle showing auth
+//                     } else {
+//                         setShowAuthModal(false);
+//                     }
+
+//                     setIsInitialized(true);
+//                 }
+//             } catch (error) {
+//                 console.error('App initialization error:', error);
+//                 setIsInitialized(true);
+//             }
+//         };
+
+//         initializeApp();
+//     }, [loading, user]);
+
+//     // Handle tab changes with proper routing
+//     const handleTabChange = (newTab) => {
+//         const routes = {
+//             predict: '/predict',
+//             analytics: '/analytics',
+//             insights: '/insights'
+//         };
+
+//         navigate(routes[newTab] || '/predict');
+//     };
+
+//     // Handle authentication requirement from NavigationTabs
+//     const handleAuthRequired = (tabId) => {
+//         console.log(`Authentication required for tab: ${tabId}`);
+//         setShowAuthModal(true);
+//     };
+
+//     // Auto-redirect to predict tab if user logs out and is on protected tab
+//     useEffect(() => {
+//         const protectedTabs = ['/analytics', '/insights'];
+//         if (!loading && !user && protectedTabs.includes(location.pathname)) {
+//             navigate('/predict');
+//         }
+//     }, [user, loading, location.pathname, navigate]);
+
+//     // Show loading spinner during initial load
+//     if (loading || !isInitialized) {
+//         return (
+//             <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+//                 <div className="text-center space-y-4">
+//                     <LoadingSpinner size="large" />
+//                     <div className="space-y-2">
+//                         <h2 className="text-xl font-semibold text-gray-800">
+//                             Loading FinDistress AI
+//                         </h2>
+//                         <p className="text-gray-600">
+//                             Preparing your AI-powered business insights...
+//                         </p>
+//                     </div>
+//                 </div>
+//             </div>
+//         );
+//     }
+
+//     // Show error state if authentication fails
+//     if (authError) {
+//         return (
+//             <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+//                 <div className="text-center space-y-4 max-w-md mx-auto px-4">
+//                     <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+//                         <AlertCircle className="w-8 h-8 text-red-600" />
+//                     </div>
+//                     <h2 className="text-xl font-semibold text-gray-800">Connection Error</h2>
+//                     <p className="text-gray-600">
+//                         Unable to connect to our financial analysis service. Please check your internet connection and try again.
+//                     </p>
+//                     <button
+//                         onClick={() => window.location.reload()}
+//                         className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+//                     >
+//                         Try Again
+//                     </button>
+//                 </div>
+//             </div>
+//         );
+//     }
+
+//     return (
+//         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 font-sans relative overflow-x-hidden">
+//             <BackgroundShapes />
+
+//             {/* Main Header Navigation - Only show when user is logged in */}
+//             {user && (
+//                 <Header
+//                     activeTab={activeTab}
+//                     setActiveTab={handleTabChange}
+//                     setShowAuthModal={setShowAuthModal}
+//                 />
+//             )}
+
+//             {/* Global Notifications */}
+//             <NotificationsContainer />
+
+//             {/* Main Content Area */}
+//             <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${user ? 'py-6 sm:py-8' : 'py-12'} relative z-10`}>
+//                 {!user ? (
+//                     <WelcomeScreen onGetStarted={() => setShowAuthModal(true)} />
+//                 ) : (
+//                     <ErrorBoundary>
+//                         {/* Mobile Navigation Tabs - only show for authenticated users */}
+//                         <NavigationTabs
+//                             activeTab={activeTab}
+//                             setActiveTab={handleTabChange}
+//                             onAuthRequired={handleAuthRequired}
+//                         />
+
+//                         <div className="transition-all duration-300 ease-in-out">
+//                             <Routes>
+//                                 <Route
+//                                     path="/"
+//                                     element={
+//                                         <ProtectedRoute requiresAuth={false} setShowAuthModal={setShowAuthModal}>
+//                                             <PredictTab />
+//                                         </ProtectedRoute>
+//                                     }
+//                                 />
+//                                 <Route
+//                                     path="/predict"
+//                                     element={
+//                                         <ProtectedRoute requiresAuth={false} setShowAuthModal={setShowAuthModal}>
+//                                             <PredictTab />
+//                                         </ProtectedRoute>
+//                                     }
+//                                 />
+//                                 <Route
+//                                     path="/analytics"
+//                                     element={
+//                                         <ProtectedRoute requiresAuth={true} setShowAuthModal={setShowAuthModal}>
+//                                             <AnalyticsTab setShowAuthModal={setShowAuthModal} />
+//                                         </ProtectedRoute>
+//                                     }
+//                                 />
+//                                 <Route
+//                                     path="/insights"
+//                                     element={
+//                                         <ProtectedRoute requiresAuth={true} setShowAuthModal={setShowAuthModal}>
+//                                             <EnhancedInsightsTab setShowAuthModal={setShowAuthModal} />
+//                                         </ProtectedRoute>
+//                                     }
+//                                 />
+//                                 <Route path="*" element={<Navigate to="/" replace />} />
+//                             </Routes>
+//                         </div>
+//                     </ErrorBoundary>
+//                 )}
+//             </main>
+
+//             {/* Authentication Modal */}
+//             <AuthModal
+//                 showAuthModal={showAuthModal}
+//                 setShowAuthModal={setShowAuthModal}
+//                 onSuccess={() => {
+//                     setShowAuthModal(false);
+//                     // Optional: Show success notification or navigate to a specific tab
+//                 }}
+//             />
+
+//             {/* Footer for Conference Presentation - Only show when user is logged in */}
+//             {user && (
+//                 <footer className="mt-16 bg-white/30 backdrop-blur-sm border-t border-white/20">
+//                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+//                         <div className="text-center text-sm text-gray-600">
+//                             <p className="mb-2">
+//                                 <span className="font-semibold text-indigo-600">FinDistress AI</span> -
+//                                 Professional Financial Health Analysis Platform
+//                             </p>
+//                             <p className="text-xs">
+//                                 Powered by Advanced Machine Learning •
+//                                 Real-time Risk Assessment •
+//                                 Business-Friendly Insights
+//                             </p>
+//                         </div>
+//                     </div>
+//                 </footer>
+//             )}
+//         </div>
+//     );
+// };
+
+// MINOR UPDATE TO YOUR APP.JSX - REPLACE THE EXISTING AppContent COMPONENT
+
 /**
  * Main application content component with navigation handling
  */
 const AppContent = () => {
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
-    const { user, loading, error: authError } = useAuth();
+    const { user, loading, isAuthenticated } = useAuth(); // UPDATED: Use isAuthenticated instead of user check
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -499,12 +720,12 @@ const AppContent = () => {
                 const hasVisited = localStorage.getItem('hasVisited');
 
                 if (!loading) {
-                    if (!user && !hasVisited) {
+                    if (!isAuthenticated && !hasVisited) {
                         // First time visitor - show welcome then auth
                         localStorage.setItem('hasVisited', 'true');
                     }
 
-                    if (!user) {
+                    if (!isAuthenticated) {
                         setShowAuthModal(false); // Let WelcomeScreen handle showing auth
                     } else {
                         setShowAuthModal(false);
@@ -519,7 +740,7 @@ const AppContent = () => {
         };
 
         initializeApp();
-    }, [loading, user]);
+    }, [loading, isAuthenticated]);
 
     // Handle tab changes with proper routing
     const handleTabChange = (newTab) => {
@@ -541,10 +762,10 @@ const AppContent = () => {
     // Auto-redirect to predict tab if user logs out and is on protected tab
     useEffect(() => {
         const protectedTabs = ['/analytics', '/insights'];
-        if (!loading && !user && protectedTabs.includes(location.pathname)) {
+        if (!loading && !isAuthenticated && protectedTabs.includes(location.pathname)) {
             navigate('/predict');
         }
-    }, [user, loading, location.pathname, navigate]);
+    }, [isAuthenticated, loading, location.pathname, navigate]);
 
     // Show loading spinner during initial load
     if (loading || !isInitialized) {
@@ -565,35 +786,12 @@ const AppContent = () => {
         );
     }
 
-    // Show error state if authentication fails
-    if (authError) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-                <div className="text-center space-y-4 max-w-md mx-auto px-4">
-                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                        <AlertCircle className="w-8 h-8 text-red-600" />
-                    </div>
-                    <h2 className="text-xl font-semibold text-gray-800">Connection Error</h2>
-                    <p className="text-gray-600">
-                        Unable to connect to our financial analysis service. Please check your internet connection and try again.
-                    </p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
-                    >
-                        Try Again
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 font-sans relative overflow-x-hidden">
             <BackgroundShapes />
 
             {/* Main Header Navigation - Only show when user is logged in */}
-            {user && (
+            {isAuthenticated && (
                 <Header
                     activeTab={activeTab}
                     setActiveTab={handleTabChange}
@@ -605,8 +803,8 @@ const AppContent = () => {
             <NotificationsContainer />
 
             {/* Main Content Area */}
-            <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${user ? 'py-6 sm:py-8' : 'py-12'} relative z-10`}>
-                {!user ? (
+            <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${isAuthenticated ? 'py-6 sm:py-8' : 'py-12'} relative z-10`}>
+                {!isAuthenticated ? (
                     <WelcomeScreen onGetStarted={() => setShowAuthModal(true)} />
                 ) : (
                     <ErrorBoundary>
@@ -639,7 +837,7 @@ const AppContent = () => {
                                     path="/analytics"
                                     element={
                                         <ProtectedRoute requiresAuth={true} setShowAuthModal={setShowAuthModal}>
-                                            <AnalyticsTab setShowAuthModal={setShowAuthModal} />
+                                            <EnhancedAnalyticsTab setShowAuthModal={setShowAuthModal} />
                                         </ProtectedRoute>
                                     }
                                 />
@@ -669,7 +867,7 @@ const AppContent = () => {
             />
 
             {/* Footer for Conference Presentation - Only show when user is logged in */}
-            {user && (
+            {isAuthenticated && (
                 <footer className="mt-16 bg-white/30 backdrop-blur-sm border-t border-white/20">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                         <div className="text-center text-sm text-gray-600">
@@ -689,7 +887,6 @@ const AppContent = () => {
         </div>
     );
 };
-
 /**
  * Root Application Component with Context Providers
  * Sets up global state management and error boundaries
