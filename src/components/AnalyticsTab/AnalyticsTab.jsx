@@ -861,10 +861,10 @@ import { useNotifications } from '../../context/NotificationContext';
 import usePredictionData from "../../hooks/usePredictionData";
 
 /**
- * CLEAN Analytics Tab - No hardcoded data, purely API-driven
+ * Working Analytics Tab that properly displays your backend data
  */
 const AnalyticsTab = () => {
-    const { data, isLoading, error, refreshData, hasData } = usePredictionData('analytics');
+    const { data, isLoading, error, refreshData } = usePredictionData('analytics');
     const { isAuthenticated } = useAuth();
     const { addNotification } = useNotifications();
     const [lastRefresh, setLastRefresh] = useState(null);
@@ -883,36 +883,16 @@ const AnalyticsTab = () => {
     }, [refreshData, addNotification]);
 
     /**
-     * Debug data structure
+     * Debug logging
      */
     useEffect(() => {
         if (data) {
-            console.log('[AnalyticsTab] Raw API data:', data);
+            console.log('[AnalyticsTab] Data received:', data);
         }
     }, [data]);
 
     /**
-     * Safe data extraction - checks if data exists before using it
-     */
-    const safeGet = useCallback((obj, path, fallback = null) => {
-        try {
-            const keys = path.split('.');
-            let current = obj;
-            for (const key of keys) {
-                if (current && typeof current === 'object' && key in current) {
-                    current = current[key];
-                } else {
-                    return fallback;
-                }
-            }
-            return current;
-        } catch (e) {
-            return fallback;
-        }
-    }, []);
-
-    /**
-     * Render authentication requirement
+     * Render authentication required
      */
     const renderAuthRequired = () => (
         <div className="flex justify-center items-center h-96">
@@ -987,70 +967,78 @@ const AnalyticsTab = () => {
     );
 
     /**
-     * Risk Distribution Chart - Only renders if data exists
+     * Risk Distribution Chart
      */
-    const RiskDistributionChart = ({ chartData, title }) => {
-        if (!chartData || !Array.isArray(chartData) || chartData.length === 0) {
+    const RiskDistributionChart = ({ riskData }) => {
+        if (!riskData || riskData.length === 0) {
             return (
-                <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
+                <div className="bg-white p-6 rounded-xl shadow-lg border">
                     <div className="flex items-center mb-4">
                         <PieChart className="h-6 w-6 text-indigo-600 mr-2" />
-                        <h3 className="text-lg font-semibold">{title}</h3>
+                        <h3 className="text-lg font-semibold">Risk Distribution</h3>
                     </div>
                     <div className="flex items-center justify-center h-64">
                         <div className="text-center text-gray-500">
                             <PieChart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                            <p className="text-sm">No risk distribution data available</p>
+                            <p className="text-sm">No risk distribution data</p>
                         </div>
                     </div>
                 </div>
             );
         }
 
-        const total = chartData.reduce((sum, item) => sum + (item.value || item.count || 0), 0);
+        const total = riskData.reduce((sum, item) => sum + (item.value || 0), 0);
 
         return (
-            <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
+            <div className="bg-white p-6 rounded-xl shadow-lg border">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center">
                         <PieChart className="h-6 w-6 text-indigo-600 mr-2" />
-                        <h3 className="text-lg font-semibold">{title}</h3>
+                        <h3 className="text-lg font-semibold">Risk Distribution</h3>
                     </div>
                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                         Total: {total}
                     </span>
                 </div>
 
-                <div className="space-y-4">
-                    {chartData.map((item, index) => {
-                        const value = item.value || item.count || 0;
-                        const percentage = item.percentage || (total > 0 ? ((value / total) * 100).toFixed(1) : 0);
-                        const name = item.name || item.category || `Item ${index + 1}`;
+                {/* Simple pie chart visualization */}
+                <div className="mb-6">
+                    <div className="relative mx-auto w-48 h-48 rounded-full bg-gray-200 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="text-2xl font-bold text-gray-800">{total}</div>
+                            <div className="text-xs text-gray-500">Predictions</div>
+                        </div>
+                    </div>
+                </div>
 
+                {/* Risk breakdown */}
+                <div className="space-y-4">
+                    {riskData.map((item, index) => {
+                        const percentage = item.percentage || (total > 0 ? ((item.value / total) * 100).toFixed(1) : 0);
                         const colors = [
-                            { bg: 'bg-green-500', text: 'text-green-800', bgLight: 'bg-green-50', border: 'border-green-200' },
-                            { bg: 'bg-yellow-500', text: 'text-yellow-800', bgLight: 'bg-yellow-50', border: 'border-yellow-200' },
-                            { bg: 'bg-red-500', text: 'text-red-800', bgLight: 'bg-red-50', border: 'border-red-200' }
+                            { bg: 'bg-green-500', text: 'text-green-800', bgLight: 'bg-green-50' },
+                            { bg: 'bg-yellow-500', text: 'text-yellow-800', bgLight: 'bg-yellow-50' },
+                            { bg: 'bg-red-500', text: 'text-red-800', bgLight: 'bg-red-50' }
                         ];
-                        const colorSet = colors[index % colors.length];
+                        const colorSet = colors[index] || colors[0];
 
                         return (
-                            <div key={index} className={`p-4 rounded-lg border ${colorSet.bgLight} ${colorSet.border}`}>
+                            <div key={index} className={`p-4 rounded-lg ${colorSet.bgLight}`}>
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center">
                                         <div className={`w-4 h-4 rounded-full ${colorSet.bg} mr-3`}></div>
                                         <span className={`text-sm font-semibold ${colorSet.text}`}>
-                                            {name}
+                                            {item.name}
                                         </span>
                                     </div>
                                     <div className="text-right">
-                                        <span className={`text-lg font-bold ${colorSet.text}`}>{value}</span>
+                                        <span className={`text-lg font-bold ${colorSet.text}`}>{item.value}</span>
                                         <span className="text-xs text-gray-500 ml-1">({percentage}%)</span>
                                     </div>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-3">
                                     <div
-                                        className={`h-3 rounded-full ${colorSet.bg} transition-all duration-1000 ease-out`}
+                                        className={`h-3 rounded-full ${colorSet.bg} transition-all duration-1000`}
                                         style={{ width: `${percentage}%` }}
                                     ></div>
                                 </div>
@@ -1063,15 +1051,15 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * Trends Chart - Only renders if data exists
+     * Trends Chart
      */
-    const TrendsChart = ({ chartData, title }) => {
-        if (!chartData || !Array.isArray(chartData) || chartData.length === 0) {
+    const TrendsChart = ({ trendsData }) => {
+        if (!trendsData || trendsData.length === 0) {
             return (
-                <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
+                <div className="bg-white p-6 rounded-xl shadow-lg border">
                     <div className="flex items-center mb-4">
                         <LineChart className="h-6 w-6 text-indigo-600 mr-2" />
-                        <h3 className="text-lg font-semibold">{title}</h3>
+                        <h3 className="text-lg font-semibold">Performance Trends</h3>
                     </div>
                     <div className="flex items-center justify-center h-64">
                         <div className="text-center text-gray-500">
@@ -1084,121 +1072,110 @@ const AnalyticsTab = () => {
         }
 
         return (
-            <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
+            <div className="bg-white p-6 rounded-xl shadow-lg border">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center">
                         <LineChart className="h-6 w-6 text-indigo-600 mr-2" />
-                        <h3 className="text-lg font-semibold">{title}</h3>
+                        <h3 className="text-lg font-semibold">Performance Trends</h3>
                     </div>
                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        {chartData.length} periods
+                        {trendsData.length} periods
                     </span>
                 </div>
 
                 <div className="space-y-3">
-                    {chartData.map((item, index) => {
-                        const period = item.period || item.month || item.date || `Period ${index + 1}`;
-                        const value = item.health_score || item.risk_score || item.value || 0;
-                        const count = item.prediction_count || item.count || 0;
-
-                        return (
-                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <div className="flex items-center">
-                                    <div className="w-3 h-3 rounded-full bg-indigo-500 mr-3"></div>
-                                    <span className="text-sm font-medium text-gray-700">
-                                        {period}
-                                    </span>
-                                </div>
-                                <div className="flex items-center space-x-3">
-                                    <span className="text-sm font-bold text-indigo-600">
-                                        {typeof value === 'number' ? value.toFixed(1) : value}
-                                    </span>
-                                    {count > 0 && (
-                                        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
-                                            {count} predictions
-                                        </span>
-                                    )}
-                                </div>
+                    {trendsData.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 rounded-full bg-indigo-500 mr-3"></div>
+                                <span className="text-sm font-medium text-gray-700">
+                                    {item.period}
+                                </span>
                             </div>
-                        );
-                    })}
+                            <div className="flex items-center space-x-3">
+                                <span className="text-sm font-bold text-indigo-600">
+                                    {item.health_score ? item.health_score.toFixed(1) : 'N/A'}
+                                </span>
+                                {item.prediction_count > 0 && (
+                                    <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
+                                        {item.prediction_count} predictions
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         );
     };
 
     /**
-     * Factors Chart - Only renders if data exists
+     * Factors Chart
      */
-    const FactorsChart = ({ chartData, title }) => {
-        if (!chartData || !Array.isArray(chartData) || chartData.length === 0) {
+    const FactorsChart = ({ factorsData }) => {
+        if (!factorsData || factorsData.length === 0) {
             return (
-                <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
+                <div className="bg-white p-6 rounded-xl shadow-lg border">
                     <div className="flex items-center mb-4">
                         <Activity className="h-6 w-6 text-indigo-600 mr-2" />
-                        <h3 className="text-lg font-semibold">{title}</h3>
+                        <h3 className="text-lg font-semibold">Top Risk Factors</h3>
                     </div>
                     <div className="flex items-center justify-center h-64">
                         <div className="text-center text-gray-500">
                             <Activity className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                            <p className="text-sm">No factor analysis data available</p>
+                            <p className="text-sm">No factor data available</p>
                         </div>
                     </div>
                 </div>
             );
         }
 
-        const maxImpact = Math.max(...chartData.map(item =>
-            item.average_impact || item.impact || item.contribution_percentage || item.weight || 0
-        ));
+        const maxImpact = Math.max(...factorsData.map(item => item.contribution_percentage || 0));
 
         return (
-            <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
+            <div className="bg-white p-6 rounded-xl shadow-lg border">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center">
                         <Activity className="h-6 w-6 text-indigo-600 mr-2" />
-                        <h3 className="text-lg font-semibold">{title}</h3>
+                        <h3 className="text-lg font-semibold">Top Risk Factors</h3>
                     </div>
                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        {chartData.length} factors
+                        {factorsData.length} factors
                     </span>
                 </div>
 
                 <div className="space-y-4">
-                    {chartData.map((item, index) => {
-                        const factor = item.factor || item.name || `Factor ${index + 1}`;
-                        const impact = item.average_impact || item.impact || item.contribution_percentage || item.weight || 0;
-                        const percentage = maxImpact > 0 ? (impact / maxImpact) * 100 : 0;
-                        const explanation = item.explanation || item.description || '';
+                    {factorsData.map((item, index) => {
+                        const percentage = maxImpact > 0 ? (item.contribution_percentage / maxImpact) * 100 : 0;
 
                         return (
-                            <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gradient-to-r from-gray-50 to-white">
+                            <div key={index} className="border border-gray-200 rounded-lg p-4">
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center flex-1">
                                         <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-full text-white font-bold text-sm mr-3">
                                             {index + 1}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-semibold text-gray-900 truncate">
-                                                {factor}
+                                            <div className="text-sm font-semibold text-gray-900">
+                                                {item.factor}
                                             </div>
-                                            {explanation && (
+                                            {item.explanation && (
                                                 <div className="text-xs text-gray-500 mt-1">
-                                                    {explanation}
+                                                    {item.explanation}
                                                 </div>
                                             )}
                                         </div>
                                     </div>
                                     <div className="text-right ml-4">
                                         <div className="text-lg font-bold text-indigo-600">
-                                            {(impact * 100).toFixed(1)}%
+                                            {item.contribution_percentage.toFixed(1)}%
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="w-full bg-gray-200 rounded-full h-3">
                                     <div
-                                        className="h-3 rounded-full bg-gradient-to-r from-indigo-400 to-indigo-600 transition-all duration-1000 ease-out"
+                                        className="h-3 rounded-full bg-indigo-600 transition-all duration-1000"
                                         style={{ width: `${Math.max(5, percentage)}%` }}
                                     ></div>
                                 </div>
@@ -1211,111 +1188,81 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * Main analytics content - completely data-driven
+     * Main content renderer
      */
-    const renderAnalyticsContent = () => {
+    const renderContent = () => {
         if (!data || data.isEmpty) {
             return renderNoData();
         }
 
-        // Extract all data dynamically from API response
-        const keyMetrics = safeGet(data, 'key_metrics', {});
-        const totalPredictions = safeGet(keyMetrics, 'total_predictions') || safeGet(data, 'totalPredictions') || 0;
-        const avgRiskScore = safeGet(keyMetrics, 'average_risk_score') || 0;
-        const healthScore = safeGet(keyMetrics, 'health_score') || (avgRiskScore > 0 ? 100 - (avgRiskScore * 100) : 0);
-        const dataQuality = safeGet(keyMetrics, 'data_quality') || safeGet(data, 'dataQuality') || 'Unknown';
+        // Extract data from your backend structure
+        const keyMetrics = data.key_metrics || {};
+        const riskDistribution = keyMetrics.risk_distribution || [];
+        const trendAnalysis = data.risk_trend_analysis || [];
+        const factorContribution = data.factor_contribution || [];
 
-        // Extract chart data - try multiple possible paths
-        const riskDistribution = safeGet(keyMetrics, 'risk_distribution') ||
-            safeGet(data, 'risk_distribution') ||
-            safeGet(data, 'riskDistribution') || [];
-
-        const trendAnalysis = safeGet(data, 'risk_trend_analysis') ||
-            safeGet(data, 'monthlyTrends') ||
-            safeGet(data, 'trends') || [];
-
-        const factorContribution = safeGet(data, 'factor_contribution') ||
-            safeGet(data, 'topRiskFactors') ||
-            safeGet(data, 'factors') || [];
+        const totalPredictions = keyMetrics.total_predictions || 0;
+        const avgRiskScore = keyMetrics.average_risk_score || 0;
+        const healthScore = keyMetrics.health_score || 0;
+        const dataQuality = keyMetrics.data_quality || 'Unknown';
 
         return (
             <div className="space-y-8">
-                {/* Key Metrics - Only show if we have data */}
-                {totalPredictions > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl text-white shadow-lg">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-sm font-medium text-blue-100 mb-1">Total Predictions</h3>
-                                    <p className="text-3xl font-bold">{totalPredictions}</p>
-                                </div>
-                                <Target className="h-8 w-8 opacity-75" />
+                {/* Key Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl text-white shadow-lg">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-sm font-medium text-blue-100 mb-1">Total Predictions</h3>
+                                <p className="text-3xl font-bold">{totalPredictions}</p>
                             </div>
+                            <Target className="h-8 w-8 opacity-75" />
                         </div>
+                    </div>
 
-                        <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl text-white shadow-lg">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-sm font-medium text-green-100 mb-1">Health Score</h3>
-                                    <p className="text-3xl font-bold">{healthScore.toFixed(0)}</p>
-                                </div>
-                                <div className="w-8 h-8 flex items-center justify-center opacity-75">
-                                    <span className="text-2xl">✓</span>
-                                </div>
+                    <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl text-white shadow-lg">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-sm font-medium text-green-100 mb-1">Health Score</h3>
+                                <p className="text-3xl font-bold">{healthScore.toFixed(0)}</p>
                             </div>
-                        </div>
-
-                        <div className="bg-gradient-to-br from-orange-500 to-red-500 p-6 rounded-xl text-white shadow-lg">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-sm font-medium text-orange-100 mb-1">Risk Score</h3>
-                                    <p className="text-3xl font-bold">{(avgRiskScore * 100).toFixed(1)}%</p>
-                                </div>
-                                <AlertTriangle className="h-8 w-8 opacity-75" />
-                            </div>
-                        </div>
-
-                        <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-xl text-white shadow-lg">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-sm font-medium text-purple-100 mb-1">Data Quality</h3>
-                                    <p className="text-2xl font-bold">{dataQuality}</p>
-                                </div>
-                                <div className="w-8 h-8 flex items-center justify-center opacity-75">
-                                    <span className="text-xl">★</span>
-                                </div>
+                            <div className="w-8 h-8 flex items-center justify-center opacity-75">
+                                <span className="text-2xl">✓</span>
                             </div>
                         </div>
                     </div>
-                )}
 
-                {/* Charts - Only render if data exists */}
+                    <div className="bg-gradient-to-br from-orange-500 to-red-500 p-6 rounded-xl text-white shadow-lg">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-sm font-medium text-orange-100 mb-1">Risk Score</h3>
+                                <p className="text-3xl font-bold">{(avgRiskScore * 100).toFixed(1)}%</p>
+                            </div>
+                            <AlertTriangle className="h-8 w-8 opacity-75" />
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-xl text-white shadow-lg">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-sm font-medium text-purple-100 mb-1">Data Quality</h3>
+                                <p className="text-2xl font-bold">{dataQuality}</p>
+                            </div>
+                            <div className="w-8 h-8 flex items-center justify-center opacity-75">
+                                <span className="text-xl">★</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Charts Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <RiskDistributionChart
-                        chartData={riskDistribution}
-                        title="Risk Distribution"
-                    />
-                    <TrendsChart
-                        chartData={trendAnalysis}
-                        title="Performance Trends"
-                    />
+                    <RiskDistributionChart riskData={riskDistribution} />
+                    <TrendsChart trendsData={trendAnalysis} />
                 </div>
 
-                {/* Factors Chart - Full width only if data exists */}
-                {factorContribution.length > 0 && (
-                    <FactorsChart
-                        chartData={factorContribution}
-                        title="Top Risk Factors"
-                    />
-                )}
-
-                {/* Raw Data Display for Debugging - Remove this in production */}
-                <div className="bg-gray-50 p-4 rounded-lg border">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Raw API Data Structure:</h4>
-                    <pre className="text-xs text-gray-600 overflow-auto max-h-40">
-                        {JSON.stringify(data, null, 2)}
-                    </pre>
-                </div>
+                {/* Factors Chart - Full Width */}
+                <FactorsChart factorsData={factorContribution} />
             </div>
         );
     };
@@ -1362,7 +1309,7 @@ const AnalyticsTab = () => {
                 {!isAuthenticated ? renderAuthRequired() :
                     isLoading ? renderLoading() :
                         error ? renderError() :
-                            renderAnalyticsContent()}
+                            renderContent()}
             </div>
         </div>
     );
