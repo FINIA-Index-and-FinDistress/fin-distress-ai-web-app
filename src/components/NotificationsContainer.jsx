@@ -11,37 +11,56 @@ import {
 import { useNotifications } from '../context/NotificationContext';
 
 /**
- * NotificationsContainer Component for FinDistress AI
- * Displays toast notifications with different types and animations
+ * CORRECTED NotificationsContainer Component for FinDistress AI
+ * Displays toast notifications with proper error handling and animations
  */
 const NotificationsContainer = () => {
-    const { notifications, removeNotification } = useNotifications();
+    const notificationContext = useNotifications();
     const [mounted, setMounted] = useState(false);
 
-    // Memoize notifications to prevent unnecessary re-renders
-    const stableNotifications = useMemo(() => notifications, [notifications]);
+    // Safely extract notifications with fallback
+    const notifications = notificationContext?.notifications || [];
+    const removeNotification = notificationContext?.removeNotification;
 
-    // Memoize removeNotification to ensure stability
-    const stableRemoveNotification = useCallback(
-        (id) => removeNotification(id),
-        [removeNotification]
-    );
+    // Safely handle notifications with fallback
+    const safeNotifications = useMemo(() => {
+        if (!notifications || !Array.isArray(notifications)) {
+            return [];
+        }
+        return notifications.filter(notification =>
+            notification &&
+            notification.id &&
+            notification.message
+        );
+    }, [notifications]);
+
+    // Stable remove function with error handling
+    const handleRemoveNotification = useCallback((id) => {
+        try {
+            if (removeNotification && typeof removeNotification === 'function') {
+                removeNotification(id);
+            }
+        } catch (error) {
+            console.warn('Error removing notification:', error);
+        }
+    }, [removeNotification]);
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
-    if (!mounted || !stableNotifications?.length) {
+    // Don't render if not mounted or no notifications
+    if (!mounted || safeNotifications.length === 0) {
         return null;
     }
 
     return (
-        <div className="fixed top-4 right-4 z-50 space-y-3 max-w-sm w-full">
-            {stableNotifications.map((notification) => (
+        <div className="fixed top-4 right-4 z-50 space-y-3 max-w-sm w-full pointer-events-none">
+            {safeNotifications.map((notification) => (
                 <NotificationToast
                     key={notification.id}
                     notification={notification}
-                    onRemove={stableRemoveNotification}
+                    onRemove={handleRemoveNotification}
                 />
             ))}
         </div>
@@ -49,32 +68,50 @@ const NotificationsContainer = () => {
 };
 
 /**
- * Individual notification toast component
+ * CORRECTED Individual notification toast component
  */
 const NotificationToast = ({ notification, onRemove }) => {
     const [isVisible, setIsVisible] = useState(false);
     const [isRemoving, setIsRemoving] = useState(false);
+
+    // Safely extract notification properties with fallbacks
+    const safeNotification = useMemo(() => ({
+        id: notification?.id || Date.now(),
+        message: notification?.message || 'Notification',
+        type: notification?.type || 'info',
+        title: notification?.title,
+        duration: notification?.duration !== undefined ? notification?.duration : 5000,
+        data: notification?.data,
+        action: notification?.action
+    }), [notification]);
 
     useEffect(() => {
         // Animate in
         const showTimer = setTimeout(() => setIsVisible(true), 50);
 
         // Auto remove after duration
-        const removeTimer = setTimeout(() => {
-            setIsRemoving(true);
-            setTimeout(() => {
-                onRemove(notification.id);
-            }, 300);
-        }, notification.duration || 5000);
+        let removeTimer;
+        if (safeNotification.duration > 0) {
+            removeTimer = setTimeout(() => {
+                setIsRemoving(true);
+                setTimeout(() => {
+                    if (onRemove && typeof onRemove === 'function') {
+                        onRemove(safeNotification.id);
+                    }
+                }, 300);
+            }, safeNotification.duration);
+        }
 
         return () => {
             clearTimeout(showTimer);
-            clearTimeout(removeTimer);
+            if (removeTimer) {
+                clearTimeout(removeTimer);
+            }
         };
-    }, [notification.id, notification.duration, onRemove]);
+    }, [safeNotification.id, safeNotification.duration, onRemove]);
 
     // Get notification styling based on type
-    const getNotificationStyle = (type) => {
+    const getNotificationStyle = useCallback((type) => {
         const styles = {
             success: {
                 bg: 'bg-green-50 border-green-200',
@@ -115,15 +152,36 @@ const NotificationToast = ({ notification, onRemove }) => {
         };
 
         return styles[type] || styles.info;
-    };
+    }, []);
 
-    const style = getNotificationStyle(notification.type);
+    const style = getNotificationStyle(safeNotification.type);
     const Icon = style.icon;
+
+    // Handle close button click
+    const handleClose = useCallback(() => {
+        setIsRemoving(true);
+        setTimeout(() => {
+            if (onRemove && typeof onRemove === 'function') {
+                onRemove(safeNotification.id);
+            }
+        }, 300);
+    }, [onRemove, safeNotification.id]);
+
+    // Handle action button click
+    const handleActionClick = useCallback(() => {
+        try {
+            if (safeNotification.action?.onClick && typeof safeNotification.action.onClick === 'function') {
+                safeNotification.action.onClick();
+            }
+        } catch (error) {
+            console.warn('Error executing notification action:', error);
+        }
+    }, [safeNotification.action]);
 
     return (
         <div
             className={`
-                transform transition-all duration-300 ease-out
+                transform transition-all duration-300 ease-out pointer-events-auto
                 ${isVisible && !isRemoving
                     ? 'translate-x-0 opacity-100 scale-100'
                     : 'translate-x-full opacity-0 scale-95'
@@ -133,6 +191,7 @@ const NotificationToast = ({ notification, onRemove }) => {
                 max-w-sm w-full
             `}
             role="alert"
+            aria-live="polite"
         >
             <div className="flex items-start space-x-3">
                 {/* Icon */}
@@ -142,45 +201,43 @@ const NotificationToast = ({ notification, onRemove }) => {
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                    {notification.title && (
+                    {safeNotification.title && (
                         <h4 className="text-sm font-semibold mb-1">
-                            {notification.title}
+                            {safeNotification.title}
                         </h4>
                     )}
                     <p className="text-sm leading-relaxed">
-                        {notification.message}
+                        {safeNotification.message}
                     </p>
 
                     {/* Additional data */}
-                    {notification.data && (
+                    {safeNotification.data && (
                         <div className="mt-2 text-xs opacity-75">
-                            {typeof notification.data === 'object'
-                                ? JSON.stringify(notification.data, null, 2)
-                                : notification.data
+                            {typeof safeNotification.data === 'object'
+                                ? JSON.stringify(safeNotification.data, null, 2)
+                                : String(safeNotification.data)
                             }
                         </div>
                     )}
 
                     {/* Action button */}
-                    {notification.action && (
+                    {safeNotification.action && safeNotification.action.label && (
                         <button
-                            onClick={notification.action.onClick}
-                            className="mt-2 text-xs font-medium underline hover:no-underline"
+                            onClick={handleActionClick}
+                            className="mt-2 text-xs font-medium underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-current focus:ring-opacity-50 rounded"
                         >
-                            {notification.action.label}
+                            {safeNotification.action.label}
                         </button>
                     )}
                 </div>
 
                 {/* Close button */}
                 <button
-                    onClick={() => {
-                        setIsRemoving(true);
-                        setTimeout(() => onRemove(notification.id), 300);
-                    }}
+                    onClick={handleClose}
                     className={`
                         flex-shrink-0 ${style.iconColor} hover:opacity-75 
                         transition-opacity p-1 -m-1 rounded
+                        focus:outline-none focus:ring-2 focus:ring-current focus:ring-opacity-50
                     `}
                     aria-label="Close notification"
                 >
@@ -189,13 +246,13 @@ const NotificationToast = ({ notification, onRemove }) => {
             </div>
 
             {/* Progress bar for auto-dismiss */}
-            {notification.duration && notification.duration > 1000 && (
-                <div className="mt-3 w-full bg-black bg-opacity-10 rounded-full h-1">
+            {safeNotification.duration && safeNotification.duration > 1000 && (
+                <div className="mt-3 w-full bg-black bg-opacity-10 rounded-full h-1 overflow-hidden">
                     <div
                         className="bg-current h-1 rounded-full transition-all ease-linear"
                         style={{
                             width: '100%',
-                            animation: `shrink ${notification.duration}ms linear forwards`
+                            animation: `shrink ${safeNotification.duration}ms linear forwards`
                         }}
                     />
                 </div>
@@ -210,10 +267,10 @@ const NotificationToast = ({ notification, onRemove }) => {
 export const createNotification = (type, message, options = {}) => {
     return {
         id: Date.now() + Math.random(),
-        type,
-        message,
+        type: type || 'info',
+        message: String(message || 'Notification'),
         title: options.title,
-        duration: options.duration || 5000,
+        duration: options.duration !== undefined ? options.duration : 5000,
         data: options.data,
         action: options.action
     };
@@ -231,24 +288,62 @@ export const notificationHelpers = {
     analytics: (message, options) => createNotification('analytics', message, options)
 };
 
-// Add required CSS for animations
-const styles = `
-@keyframes shrink {
-    from {
-        width: 100%;
-    }
-    to {
-        width: 0%;
-    }
-}
-`;
+/**
+ * CSS Injection with better error handling
+ */
+const injectStyles = () => {
+    if (typeof document === 'undefined') return;
 
-// Inject styles if not already present
-if (typeof document !== 'undefined' && !document.getElementById('notification-styles')) {
-    const styleSheet = document.createElement('style');
-    styleSheet.id = 'notification-styles';
-    styleSheet.textContent = styles;
-    document.head.appendChild(styleSheet);
-}
+    const styleId = 'findistress-notification-styles';
+
+    // Check if styles already exist
+    if (document.getElementById(styleId)) return;
+
+    const styles = `
+        @keyframes shrink {
+            from {
+                width: 100%;
+            }
+            to {
+                width: 0%;
+            }
+        }
+        
+        /* Additional animation styles for notifications */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+    `;
+
+    try {
+        const styleSheet = document.createElement('style');
+        styleSheet.id = styleId;
+        styleSheet.textContent = styles;
+        document.head.appendChild(styleSheet);
+    } catch (error) {
+        console.warn('Failed to inject notification styles:', error);
+    }
+};
+
+// Inject styles when module loads
+injectStyles();
 
 export default NotificationsContainer;
