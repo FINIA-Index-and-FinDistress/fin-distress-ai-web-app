@@ -1,49 +1,85 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-// Simplified AuthContext to resolve build/runtime issues
-const AuthContext = createContext(null);
+// Create context with explicit default value to prevent undefined errors
+const AuthContext = createContext({
+    user: null,
+    isAuthenticated: false,
+    loading: true,
+    error: null,
+    authState: {
+        user: null,
+        isAuthenticated: false,
+        isLoading: true,
+        error: null,
+        accessToken: null
+    },
+    login: () => Promise.resolve({ success: false }),
+    logout: () => { },
+    getAuthHeaders: () => ({ 'Content-Type': 'application/json' }),
+    updateActivity: () => { },
+    updateUser: () => { },
+    clearError: () => { },
+    isAdmin: false,
+    userName: 'User',
+    userEmail: ''
+});
 
-// Storage utility with error handling
-const storage = {
+// FIXED: Simple, safe storage helper
+const authStorage = {
+    keys: {
+        ACCESS_TOKEN: 'findistress_access_token',
+        REFRESH_TOKEN: 'findistress_refresh_token',
+        USER_DATA: 'findistress_user_data',
+        TOKEN_EXPIRY: 'findistress_token_expiry',
+        LAST_ACTIVITY: 'findistress_last_activity'
+    },
+
     get: (key) => {
         try {
-            const item = localStorage.getItem(key);
-            return item ? JSON.parse(item) : null;
+            if (typeof window !== 'undefined' && window.localStorage) {
+                const item = window.localStorage.getItem(key);
+                return item ? JSON.parse(item) : null;
+            }
         } catch (error) {
-            console.warn('Storage read error:', error);
-            return null;
+            console.warn('Storage get error:', error);
         }
+        return null;
     },
+
     set: (key, value) => {
         try {
-            localStorage.setItem(key, JSON.stringify(value));
+            if (typeof window !== 'undefined' && window.localStorage) {
+                window.localStorage.setItem(key, JSON.stringify(value));
+            }
         } catch (error) {
-            console.warn('Storage write error:', error);
+            console.warn('Storage set error:', error);
         }
     },
+
     remove: (key) => {
         try {
-            localStorage.removeItem(key);
+            if (typeof window !== 'undefined' && window.localStorage) {
+                window.localStorage.removeItem(key);
+            }
         } catch (error) {
             console.warn('Storage remove error:', error);
         }
     },
+
     clear: () => {
         try {
-            const keys = [
-                'findistress_access_token',
-                'findistress_refresh_token',
-                'findistress_user_data',
-                'findistress_token_expiry',
-                'findistress_last_activity'
-            ];
-            keys.forEach(key => localStorage.removeItem(key));
+            if (typeof window !== 'undefined' && window.localStorage) {
+                Object.values(authStorage.keys).forEach(key => {
+                    window.localStorage.removeItem(key);
+                });
+            }
         } catch (error) {
             console.warn('Storage clear error:', error);
         }
     }
 };
 
+// FIXED: AuthProvider component based on your endpoints.py structure
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [accessToken, setAccessToken] = useState(null);
@@ -52,28 +88,29 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // API base URL matching your endpoints.py
     const API_BASE = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
 
-    // Update activity timestamp
+    // Activity tracking
     const updateActivity = useCallback(() => {
-        storage.set('findistress_last_activity', Date.now());
+        authStorage.set(authStorage.keys.LAST_ACTIVITY, Date.now());
     }, []);
 
-    // Check if user should be logged out due to inactivity
+    // Check inactivity (1 hour timeout matching your backend)
     const checkInactivity = useCallback(() => {
-        const lastActivity = storage.get('findistress_last_activity');
-        const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hour
+        const lastActivity = authStorage.get(authStorage.keys.LAST_ACTIVITY);
+        const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hour as per your requirements
 
         if (lastActivity && Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
-            console.log('Auto-logout due to inactivity');
+            console.log('🔒 Auto-logout due to inactivity');
             return false;
         }
         return true;
     }, []);
 
-    // Get auth headers
+    // Get auth headers for API requests
     const getAuthHeaders = useCallback(() => {
-        const token = accessToken || storage.get('findistress_access_token');
+        const token = accessToken || authStorage.get(authStorage.keys.ACCESS_TOKEN);
         return token ? {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -82,7 +119,7 @@ export const AuthProvider = ({ children }) => {
         };
     }, [accessToken]);
 
-    // Login function
+    // Login function matching your endpoints.py login flow
     const login = useCallback(async (credentials) => {
         setLoading(true);
         setError(null);
@@ -90,26 +127,29 @@ export const AuthProvider = ({ children }) => {
         try {
             console.log('🔑 Attempting login...');
 
-            // Try JSON login first
-            const loginResponse = await fetch(`${API_BASE}/login`, {
+            // Try JSON login first (matching your /api/v1/login endpoint)
+            let response = await fetch(`${API_BASE}/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(credentials)
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password
+                })
             });
 
             let data;
-            if (loginResponse.ok) {
-                data = await loginResponse.json();
+            if (response.ok) {
+                data = await response.json();
             } else {
-                // Try form data login
+                // Try form data login (matching your /api/v1/token endpoint)
                 console.log('Trying form data login...');
                 const formData = new URLSearchParams();
                 formData.append('username', credentials.username);
                 formData.append('password', credentials.password);
 
-                const formResponse = await fetch(`${API_BASE}/token`, {
+                response = await fetch(`${API_BASE}/token`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -117,16 +157,23 @@ export const AuthProvider = ({ children }) => {
                     body: formData
                 });
 
-                if (!formResponse.ok) {
-                    const errorData = await formResponse.json().catch(() => ({}));
-                    throw new Error(errorData.detail || `Login failed: ${formResponse.status}`);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `Login failed: ${response.status}`);
                 }
 
-                data = await formResponse.json();
+                data = await response.json();
             }
 
-            // Get user profile
-            let userData;
+            // Get user profile (matching your /api/v1/users/me endpoint)
+            let userData = {
+                username: credentials.username,
+                email: '',
+                full_name: credentials.username,
+                is_admin: false,
+                is_active: true
+            };
+
             try {
                 const userResponse = await fetch(`${API_BASE}/users/me`, {
                     headers: {
@@ -136,33 +183,20 @@ export const AuthProvider = ({ children }) => {
 
                 if (userResponse.ok) {
                     userData = await userResponse.json();
-                } else {
-                    userData = {
-                        username: credentials.username,
-                        email: '',
-                        full_name: credentials.username,
-                        is_admin: false
-                    };
                 }
-            } catch (error) {
-                console.warn('Failed to fetch user profile:', error);
-                userData = {
-                    username: credentials.username,
-                    email: '',
-                    full_name: credentials.username,
-                    is_admin: false
-                };
+            } catch (userError) {
+                console.warn('Failed to fetch user profile, using defaults:', userError);
             }
 
             // Calculate token expiry
             const tokenExpiry = Date.now() + (data.expires_in * 1000);
 
             // Store authentication data
-            storage.set('findistress_access_token', data.access_token);
-            storage.set('findistress_refresh_token', data.refresh_token);
-            storage.set('findistress_user_data', userData);
-            storage.set('findistress_token_expiry', tokenExpiry);
-            storage.set('findistress_last_activity', Date.now());
+            authStorage.set(authStorage.keys.ACCESS_TOKEN, data.access_token);
+            authStorage.set(authStorage.keys.REFRESH_TOKEN, data.refresh_token);
+            authStorage.set(authStorage.keys.USER_DATA, userData);
+            authStorage.set(authStorage.keys.TOKEN_EXPIRY, tokenExpiry);
+            authStorage.set(authStorage.keys.LAST_ACTIVITY, Date.now());
 
             // Update state
             setUser(userData);
@@ -174,22 +208,22 @@ export const AuthProvider = ({ children }) => {
             console.log('✅ Login successful');
             return { success: true, user: userData };
 
-        } catch (error) {
-            console.error('❌ Login failed:', error);
-            setError(error.message);
-            return { success: false, error: error.message };
+        } catch (loginError) {
+            console.error('❌ Login failed:', loginError);
+            setError(loginError.message);
+            return { success: false, error: loginError.message };
         } finally {
             setLoading(false);
         }
     }, [API_BASE]);
 
     // Logout function
-    const logout = useCallback(async (showNotification = true) => {
+    const logout = useCallback(() => {
         try {
             // Clear storage
-            storage.clear();
+            authStorage.clear();
 
-            // Update state
+            // Reset state
             setUser(null);
             setAccessToken(null);
             setRefreshToken(null);
@@ -197,10 +231,9 @@ export const AuthProvider = ({ children }) => {
             setError(null);
 
             console.log('🔒 Logout completed');
-
-        } catch (error) {
-            console.error('❌ Logout error:', error);
-            // Still proceed with logout even if there's an error
+        } catch (logoutError) {
+            console.error('❌ Logout error:', logoutError);
+            // Still proceed with logout
             setUser(null);
             setAccessToken(null);
             setRefreshToken(null);
@@ -211,8 +244,10 @@ export const AuthProvider = ({ children }) => {
 
     // Update user profile
     const updateUser = useCallback((updates) => {
+        if (!user) return;
+
         const updatedUser = { ...user, ...updates };
-        storage.set('findistress_user_data', updatedUser);
+        authStorage.set(authStorage.keys.USER_DATA, updatedUser);
         setUser(updatedUser);
     }, [user]);
 
@@ -226,10 +261,10 @@ export const AuthProvider = ({ children }) => {
         try {
             console.log('🚀 Initializing authentication...');
 
-            const storedToken = storage.get('findistress_access_token');
-            const storedRefreshToken = storage.get('findistress_refresh_token');
-            const storedUser = storage.get('findistress_user_data');
-            const storedExpiry = storage.get('findistress_token_expiry');
+            const storedToken = authStorage.get(authStorage.keys.ACCESS_TOKEN);
+            const storedRefreshToken = authStorage.get(authStorage.keys.REFRESH_TOKEN);
+            const storedUser = authStorage.get(authStorage.keys.USER_DATA);
+            const storedExpiry = authStorage.get(authStorage.keys.TOKEN_EXPIRY);
 
             if (!storedToken || !storedRefreshToken || !storedUser) {
                 console.log('🔍 No stored auth data found');
@@ -239,6 +274,7 @@ export const AuthProvider = ({ children }) => {
 
             // Check if user was inactive for too long
             if (!checkInactivity()) {
+                authStorage.clear();
                 setLoading(false);
                 return;
             }
@@ -248,7 +284,7 @@ export const AuthProvider = ({ children }) => {
             // Check if token is expired
             if (storedExpiry && storedExpiry < now) {
                 console.log('🔄 Token expired, clearing auth data');
-                storage.clear();
+                authStorage.clear();
                 setLoading(false);
                 return;
             }
@@ -261,9 +297,9 @@ export const AuthProvider = ({ children }) => {
 
             console.log('✅ Authentication restored from storage');
 
-        } catch (error) {
-            console.error('❌ Auth initialization failed:', error);
-            storage.clear();
+        } catch (initError) {
+            console.error('❌ Auth initialization failed:', initError);
+            authStorage.clear();
         } finally {
             setLoading(false);
         }
@@ -275,11 +311,11 @@ export const AuthProvider = ({ children }) => {
         initializeAuth();
 
         // Set up activity monitoring
-        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-
         const handleActivity = () => {
             updateActivity();
         };
+
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
 
         events.forEach(event => {
             document.addEventListener(event, handleActivity, { passive: true });
@@ -293,21 +329,15 @@ export const AuthProvider = ({ children }) => {
         };
     }, [initializeAuth, updateActivity]);
 
-    // Context value
+    // Create context value with all required properties
     const contextValue = {
-        // State
-        authState: {
-            user,
-            accessToken,
-            refreshToken,
-            isAuthenticated,
-            isLoading: loading,
-            error
-        },
+        // Core state
         user,
         isAuthenticated,
         loading,
         error,
+        accessToken,
+        refreshToken,
 
         // Actions
         login,
@@ -320,7 +350,17 @@ export const AuthProvider = ({ children }) => {
         // Computed values
         isAdmin: user?.is_admin || false,
         userName: user?.full_name || user?.username || 'User',
-        userEmail: user?.email || ''
+        userEmail: user?.email || '',
+
+        // Legacy compatibility for existing components
+        authState: {
+            user,
+            isAuthenticated,
+            isLoading: loading,
+            error,
+            accessToken,
+            refreshToken
+        }
     };
 
     return (
@@ -330,12 +370,40 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-// Custom hook to use auth context
+// FIXED: useAuth hook with safe error handling
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider');
+
+    if (context === undefined) {
+        console.error('useAuth must be used within an AuthProvider');
+        // Return safe fallback to prevent crashes
+        return {
+            user: null,
+            isAuthenticated: false,
+            loading: false,
+            error: null,
+            accessToken: null,
+            refreshToken: null,
+            login: () => Promise.resolve({ success: false, error: 'AuthProvider not found' }),
+            logout: () => { },
+            updateUser: () => { },
+            clearError: () => { },
+            getAuthHeaders: () => ({ 'Content-Type': 'application/json' }),
+            updateActivity: () => { },
+            isAdmin: false,
+            userName: 'User',
+            userEmail: '',
+            authState: {
+                user: null,
+                isAuthenticated: false,
+                isLoading: false,
+                error: null,
+                accessToken: null,
+                refreshToken: null
+            }
+        };
     }
+
     return context;
 };
 
