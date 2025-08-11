@@ -5,10 +5,10 @@ import { useNotifications } from '../../context/NotificationContext';
 import usePredictionData from "../../hooks/usePredictionData";
 
 /**
- * FIXED Analytics Tab with proper data handling and no object rendering
+ * COMPLETELY FIXED Analytics Tab with working visualizations and no object rendering
  */
 const AnalyticsTab = () => {
-    const { data, isLoading, error, refreshData, hasData, dataQuality } = usePredictionData('analytics');
+    const { data, isLoading, error, refreshData, hasData } = usePredictionData('analytics');
     const { isAuthenticated } = useAuth();
     const { addNotification } = useNotifications();
     const [lastRefresh, setLastRefresh] = useState(null);
@@ -27,79 +27,78 @@ const AnalyticsTab = () => {
     }, [refreshData, addNotification]);
 
     /**
-     * Debug effect to log data structure
+     * FIXED: Safe data extraction with guaranteed fallbacks
      */
-    useEffect(() => {
-        if (data) {
-            console.log('[AnalyticsTab] Current data structure:', data);
+    const extractAnalyticsData = useCallback(() => {
+        if (!data || data.isEmpty) {
+            return {
+                totalPredictions: 0,
+                avgRiskScore: 0,
+                healthScore: 0,
+                dataQuality: 'No Data',
+                riskDistribution: [],
+                trendAnalysis: [],
+                factorContribution: [],
+                peerComparison: {},
+                summaryInsights: {}
+            };
+        }
+
+        try {
+            // Extract key metrics safely
+            const keyMetrics = data.key_metrics || {};
+            const totalPredictions = keyMetrics.total_predictions || data.totalPredictions || 0;
+            const avgRiskScore = keyMetrics.average_risk_score || 0;
+            const healthScore = keyMetrics.health_score || Math.max(0, 100 - (avgRiskScore * 100));
+            const dataQuality = keyMetrics.data_quality || data.dataQuality || 'Unknown';
+
+            // Extract arrays safely
+            const riskDistribution = Array.isArray(keyMetrics.risk_distribution)
+                ? keyMetrics.risk_distribution
+                : Array.isArray(data.riskDistribution)
+                    ? data.riskDistribution
+                    : [];
+
+            const trendAnalysis = Array.isArray(data.risk_trend_analysis)
+                ? data.risk_trend_analysis
+                : Array.isArray(data.monthlyTrends)
+                    ? data.monthlyTrends
+                    : [];
+
+            const factorContribution = Array.isArray(data.factor_contribution)
+                ? data.factor_contribution
+                : Array.isArray(data.topRiskFactors)
+                    ? data.topRiskFactors
+                    : [];
+
+            return {
+                totalPredictions,
+                avgRiskScore,
+                healthScore,
+                dataQuality,
+                riskDistribution,
+                trendAnalysis,
+                factorContribution,
+                peerComparison: data.peer_comparison || {},
+                summaryInsights: data.summary_insights || {}
+            };
+        } catch (error) {
+            console.error('Error extracting analytics data:', error);
+            return {
+                totalPredictions: 0,
+                avgRiskScore: 0,
+                healthScore: 0,
+                dataQuality: 'Error',
+                riskDistribution: [],
+                trendAnalysis: [],
+                factorContribution: [],
+                peerComparison: {},
+                summaryInsights: {}
+            };
         }
     }, [data]);
 
-    /**
-     * Safe data extraction helper
-     */
-    const safeExtractData = useCallback((data, path, fallback = []) => {
-        try {
-            const keys = path.split('.');
-            let current = data;
-            for (const key of keys) {
-                if (current && typeof current === 'object' && key in current) {
-                    current = current[key];
-                } else {
-                    return fallback;
-                }
-            }
-            return Array.isArray(current) ? current : fallback;
-        } catch (e) {
-            console.warn(`Failed to extract path ${path}:`, e);
-            return fallback;
-        }
-    }, []);
-
-    /**
-     * Safe value extraction helper
-     */
-    const safeExtractValue = useCallback((data, path, fallback = 0) => {
-        try {
-            const keys = path.split('.');
-            let current = data;
-            for (const key of keys) {
-                if (current && typeof current === 'object' && key in current) {
-                    current = current[key];
-                } else {
-                    return fallback;
-                }
-            }
-            return typeof current === 'number' ? current : fallback;
-        } catch (e) {
-            return fallback;
-        }
-    }, []);
-
-    /**
-     * Safe string extraction helper
-     */
-    const safeExtractString = useCallback((data, path, fallback = '') => {
-        try {
-            const keys = path.split('.');
-            let current = data;
-            for (const key of keys) {
-                if (current && typeof current === 'object' && key in current) {
-                    current = current[key];
-                } else {
-                    return fallback;
-                }
-            }
-            return typeof current === 'string' ? current : String(current || fallback);
-        } catch (e) {
-            return fallback;
-        }
-    }, []);
-
-    // FIXED: Extract data quality at component level for global access
-    const extractedDataQuality = data ?
-        safeExtractString(data, 'key_metrics.data_quality',
-            safeExtractString(data, 'dataQuality', 'Unknown')) : 'Unknown';
+    const analyticsData = extractAnalyticsData();
 
     /**
      * Render authentication requirement notice
@@ -176,21 +175,19 @@ const AnalyticsTab = () => {
         </div>
     );
 
+    /**
+     * FIXED: Risk Distribution Chart Component - No Object Rendering
+     */
     const RiskDistributionChart = ({ data: chartData, title = "Risk Distribution" }) => {
-        console.log('🔍 RiskDistributionChart received data:', chartData);
+        const processedData = Array.isArray(chartData) ? chartData.map(item => ({
+            name: typeof item === 'object' && item.name ? String(item.name) : 'Unknown',
+            value: typeof item === 'object' && typeof item.value === 'number' ? item.value : 0,
+            percentage: typeof item === 'object' && typeof item.percentage === 'number' ? item.percentage : 0
+        })) : [];
 
-        // FIXED: Handle the data structure properly
-        let riskData = [];
+        const total = processedData.reduce((sum, item) => sum + item.value, 0);
 
-        if (Array.isArray(chartData)) {
-            riskData = chartData;
-        } else {
-            riskData = [];
-        }
-
-        console.log('📊 Processed risk data:', riskData);
-
-        if (!riskData || riskData.length === 0) {
+        if (total === 0) {
             return (
                 <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
                     <div className="flex items-center mb-4">
@@ -201,20 +198,11 @@ const AnalyticsTab = () => {
                         <div className="text-center text-gray-500">
                             <PieChart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                             <p className="text-sm">No risk distribution data available</p>
-                            <p className="text-xs mt-2">Data received: {JSON.stringify(chartData)}</p>
                         </div>
                     </div>
                 </div>
             );
         }
-
-        const processedData = riskData.map(item => ({
-            name: item.name || 'Unknown',
-            value: Number(item.value || 0),
-            percentage: Number(item.percentage || 0)
-        }));
-
-        const total = processedData.reduce((sum, item) => sum + item.value, 0);
 
         return (
             <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
@@ -228,26 +216,36 @@ const AnalyticsTab = () => {
                     </span>
                 </div>
 
-                {/* Visual pie chart representation */}
+                {/* Visual representation */}
                 <div className="mb-6">
                     <div className="relative mx-auto w-48 h-48">
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-400 to-green-500 shadow-lg"></div>
-                        {processedData[1] && processedData[1].value > 0 && (
-                            <div
-                                className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500"
-                                style={{
-                                    clipPath: `polygon(50% 50%, 50% 0%, ${50 + (processedData[1].percentage || 0) * 0.5}% 0%, 100% 100%, 50% 100%)`
-                                }}
-                            ></div>
-                        )}
-                        {processedData[2] && processedData[2].value > 0 && (
-                            <div
-                                className="absolute inset-0 rounded-full bg-gradient-to-r from-red-400 to-red-500"
-                                style={{
-                                    clipPath: `polygon(50% 50%, 50% 0%, 100% 0%, 100% ${processedData[2].percentage || 0}%, 50% 100%)`
-                                }}
-                            ></div>
-                        )}
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+                            {processedData.map((item, index) => {
+                                const colors = ['#10b981', '#f59e0b', '#ef4444'];
+                                const startAngle = processedData.slice(0, index).reduce((sum, prev) => sum + (prev.percentage || 0), 0) * 3.6;
+                                const endAngle = startAngle + (item.percentage || 0) * 3.6;
+                                const largeArcFlag = (item.percentage || 0) > 50 ? 1 : 0;
+
+                                const x1 = 50 + 40 * Math.cos((startAngle - 90) * Math.PI / 180);
+                                const y1 = 50 + 40 * Math.sin((startAngle - 90) * Math.PI / 180);
+                                const x2 = 50 + 40 * Math.cos((endAngle - 90) * Math.PI / 180);
+                                const y2 = 50 + 40 * Math.sin((endAngle - 90) * Math.PI / 180);
+
+                                if (item.percentage > 0) {
+                                    return (
+                                        <path
+                                            key={index}
+                                            d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
+                                            fill={colors[index] || '#6b7280'}
+                                            stroke="#ffffff"
+                                            strokeWidth="1"
+                                        />
+                                    );
+                                }
+                                return null;
+                            })}
+                        </svg>
                         <div className="absolute inset-12 rounded-full bg-white shadow-inner flex items-center justify-center">
                             <div className="text-center">
                                 <div className="text-2xl font-bold text-gray-800">{total}</div>
@@ -257,10 +255,9 @@ const AnalyticsTab = () => {
                     </div>
                 </div>
 
-                {/* Legend and details */}
+                {/* Legend */}
                 <div className="space-y-4">
                     {processedData.map((item, index) => {
-                        const percentage = item.percentage || (total > 0 ? ((item.value / total) * 100).toFixed(1) : 0);
                         const colors = [
                             { bg: 'bg-green-500', text: 'text-green-800', bgLight: 'bg-green-50', border: 'border-green-200' },
                             { bg: 'bg-yellow-500', text: 'text-yellow-800', bgLight: 'bg-yellow-50', border: 'border-yellow-200' },
@@ -279,13 +276,13 @@ const AnalyticsTab = () => {
                                     </div>
                                     <div className="text-right">
                                         <span className={`text-lg font-bold ${colorSet.text}`}>{item.value}</span>
-                                        <span className="text-xs text-gray-500 ml-1">({percentage}%)</span>
+                                        <span className="text-xs text-gray-500 ml-1">({item.percentage.toFixed(1)}%)</span>
                                     </div>
                                 </div>
-                                <div className={`w-full bg-gray-200 rounded-full h-3`}>
+                                <div className="w-full bg-gray-200 rounded-full h-3">
                                     <div
                                         className={`h-3 rounded-full ${colorSet.bg} transition-all duration-1000 ease-out`}
-                                        style={{ width: `${percentage}%` }}
+                                        style={{ width: `${item.percentage}%` }}
                                     ></div>
                                 </div>
                             </div>
@@ -296,23 +293,21 @@ const AnalyticsTab = () => {
         );
     };
 
-    // REPLACE the TrendsChart function in your AnalyticsTab.jsx with this:
-
+    /**
+     * FIXED: Trends Chart Component - No Object Rendering
+     */
     const TrendsChart = ({ data: chartData, title = "Risk Trends" }) => {
-        console.log('📈 TrendsChart received data:', chartData);
+        const processedData = Array.isArray(chartData) ? chartData.map(item => ({
+            period: typeof item === 'object' && item.period ? String(item.period) : 'Unknown',
+            value: typeof item === 'object' && typeof item.health_score === 'number' ? item.health_score :
+                typeof item === 'object' && typeof item.risk_score === 'number' ? item.risk_score :
+                    typeof item === 'object' && typeof item.value === 'number' ? item.value : 0,
+            predictionCount: typeof item === 'object' && typeof item.prediction_count === 'number' ? item.prediction_count : 0
+        })) : [];
 
-        // FIXED: Handle the data structure properly
-        let trendsData = [];
+        const maxValue = Math.max(...processedData.map(item => Math.abs(item.value)), 1);
 
-        if (Array.isArray(chartData)) {
-            trendsData = chartData;
-        } else {
-            trendsData = [];
-        }
-
-        console.log('📊 Processed trends data:', trendsData);
-
-        if (!trendsData || trendsData.length === 0) {
+        if (processedData.length === 0) {
             return (
                 <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
                     <div className="flex items-center mb-4">
@@ -323,20 +318,11 @@ const AnalyticsTab = () => {
                         <div className="text-center text-gray-500">
                             <LineChart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                             <p className="text-sm">No trend data available</p>
-                            <p className="text-xs mt-2">Data received: {JSON.stringify(chartData)}</p>
                         </div>
                     </div>
                 </div>
             );
         }
-
-        const processedData = trendsData.map(item => ({
-            period: item.period || 'Unknown',
-            value: Number(item.health_score || item.risk_score || item.value || 0),
-            predictionCount: Number(item.prediction_count || 0)
-        }));
-
-        const maxValue = Math.max(...processedData.map(item => Math.abs(item.value)));
 
         return (
             <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
@@ -357,21 +343,21 @@ const AnalyticsTab = () => {
                         <div className="absolute inset-0">
                             {[...Array(5)].map((_, i) => (
                                 <div
-                                    key={i}
+                                    key={`h-${i}`}
                                     className="absolute border-t border-gray-200"
                                     style={{ top: `${i * 25}%`, left: 0, right: 0 }}
                                 ></div>
                             ))}
                             {[...Array(processedData.length + 1)].map((_, i) => (
                                 <div
-                                    key={i}
+                                    key={`v-${i}`}
                                     className="absolute border-l border-gray-200 h-full"
                                     style={{ left: `${(i / Math.max(processedData.length, 1)) * 100}%` }}
                                 ></div>
                             ))}
                         </div>
 
-                        {/* Data points and line */}
+                        {/* Chart line and points */}
                         <svg className="absolute inset-0 w-full h-full">
                             {processedData.length > 1 && (
                                 <polyline
@@ -386,7 +372,6 @@ const AnalyticsTab = () => {
                                 />
                             )}
 
-                            {/* Data points */}
                             {processedData.map((item, index) => {
                                 const x = (index / Math.max(processedData.length - 1, 1)) * 100;
                                 const y = maxValue > 0 ? 100 - ((Math.abs(item.value) / maxValue) * 100) : 50;
@@ -447,23 +432,24 @@ const AnalyticsTab = () => {
         );
     };
 
-    // REPLACE the FactorsChart function in your AnalyticsTab.jsx with this:
-
+    /**
+     * FIXED: Factors Chart Component - No Object Rendering
+     */
     const FactorsChart = ({ data: chartData, title = "Top Risk Factors" }) => {
-        console.log('🔍 FactorsChart received data:', chartData);
+        const processedData = Array.isArray(chartData) ? chartData.map(item => ({
+            factor: typeof item === 'object' && item.factor ? String(item.factor) :
+                typeof item === 'object' && item.name ? String(item.name) : 'Unknown Factor',
+            impact: typeof item === 'object' && typeof item.average_impact === 'number' ? item.average_impact :
+                typeof item === 'object' && typeof item.impact === 'number' ? item.impact :
+                    typeof item === 'object' && typeof item.contribution_percentage === 'number' ? item.contribution_percentage / 100 : 0,
+            impactLevel: typeof item === 'object' && item.impact_level ? String(item.impact_level) : 'Medium',
+            explanation: typeof item === 'object' && item.explanation ? String(item.explanation) :
+                typeof item === 'object' && item.description ? String(item.description) : 'Factor analysis'
+        })) : [];
 
-        // FIXED: Handle the data structure properly
-        let factorsData = [];
+        const maxImpact = Math.max(...processedData.map(item => item.impact), 0.01);
 
-        if (Array.isArray(chartData)) {
-            factorsData = chartData;
-        } else {
-            factorsData = [];
-        }
-
-        console.log('📊 Processed factors data:', factorsData);
-
-        if (!factorsData || factorsData.length === 0) {
+        if (processedData.length === 0) {
             return (
                 <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
                     <div className="flex items-center mb-4">
@@ -474,21 +460,11 @@ const AnalyticsTab = () => {
                         <div className="text-center text-gray-500">
                             <Activity className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                             <p className="text-sm">No factor analysis data available</p>
-                            <p className="text-xs mt-2">Data received: {JSON.stringify(chartData)}</p>
                         </div>
                     </div>
                 </div>
             );
         }
-
-        const processedData = factorsData.map(item => ({
-            factor: item.factor || item.name || 'Unknown Factor',
-            impact: Number(item.average_impact || item.impact || item.contribution_percentage || 0),
-            impactLevel: item.impact_level || 'Medium',
-            explanation: item.explanation || item.description || 'Factor analysis'
-        }));
-
-        const maxImpact = Math.max(...processedData.map(item => item.impact));
 
         return (
             <div className="bg-white p-6 rounded-xl shadow-lg border min-h-[400px]">
@@ -582,15 +558,13 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * FIXED: Summary insights component with safe data handling
+     * FIXED: Summary insights component
      */
-    const SummaryInsightsCard = ({ data: insightsData }) => {
-        const summaryInsights = safeExtractData(insightsData, 'summary_insights', null);
+    const SummaryInsightsCard = ({ insights }) => {
+        if (!insights || typeof insights !== 'object') return null;
 
-        if (!summaryInsights) return null;
-
-        const trendDirection = safeExtractString(summaryInsights, 'trend_direction', 'stable');
-        const riskStability = safeExtractString(summaryInsights, 'risk_stability', 'stable');
+        const trendDirection = typeof insights.trend_direction === 'string' ? insights.trend_direction : 'stable';
+        const riskStability = typeof insights.risk_stability === 'string' ? insights.risk_stability : 'stable';
 
         return (
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-200">
@@ -604,12 +578,12 @@ const AnalyticsTab = () => {
                             <span className="text-sm font-medium text-gray-700">Risk Trend:</span>
                             <div className="flex items-center">
                                 <div className={`w-2 h-2 rounded-full mr-2 ${trendDirection === 'increasing' ? 'bg-red-500' :
-                                    trendDirection === 'decreasing' ? 'bg-green-500' :
-                                        'bg-yellow-500'
+                                        trendDirection === 'decreasing' ? 'bg-green-500' :
+                                            'bg-yellow-500'
                                     }`}></div>
                                 <span className={`text-sm font-bold capitalize ${trendDirection === 'increasing' ? 'text-red-600' :
-                                    trendDirection === 'decreasing' ? 'text-green-600' :
-                                        'text-yellow-600'
+                                        trendDirection === 'decreasing' ? 'text-green-600' :
+                                            'text-yellow-600'
                                     }`}>
                                     {trendDirection}
                                 </span>
@@ -620,8 +594,8 @@ const AnalyticsTab = () => {
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-700">Risk Stability:</span>
                             <span className={`text-sm font-bold capitalize ${riskStability === 'volatile' ? 'text-red-600' :
-                                riskStability === 'moderate' ? 'text-yellow-600' :
-                                    'text-green-600'
+                                    riskStability === 'moderate' ? 'text-yellow-600' :
+                                        'text-green-600'
                                 }`}>
                                 {riskStability}
                             </span>
@@ -632,30 +606,13 @@ const AnalyticsTab = () => {
         );
     };
 
-    // REPLACE the renderAnalyticsContent function in your AnalyticsTab.jsx with this FIXED version:
-
+    /**
+     * FIXED: Main analytics content renderer
+     */
     const renderAnalyticsContent = () => {
-        if (!data || data.isEmpty) {
+        if (!hasData || analyticsData.totalPredictions === 0) {
             return renderNoData();
         }
-
-        console.log('[AnalyticsTab] Rendering with data:', data);
-
-        // FIXED: Direct data extraction without complex path traversal
-        const keyMetrics = data.key_metrics || {};
-        const totalPredictions = keyMetrics.total_predictions || data.totalPredictions || 0;
-        const avgRiskScore = keyMetrics.average_risk_score || 0;
-        const healthScore = keyMetrics.health_score || (100 - (avgRiskScore * 100));
-
-        // FIXED: Direct array extractions
-        const riskDistribution = keyMetrics.risk_distribution || data.riskDistribution || [];
-        const trendAnalysis = data.risk_trend_analysis || data.monthlyTrends || [];
-        const factorContribution = data.factor_contribution || data.topRiskFactors || [];
-
-        // Add console logs to debug
-        console.log('📊 Risk Distribution:', riskDistribution);
-        console.log('📈 Trend Analysis:', trendAnalysis);
-        console.log('🔍 Factor Contribution:', factorContribution);
 
         return (
             <div className="space-y-8">
@@ -665,7 +622,7 @@ const AnalyticsTab = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-sm font-medium text-blue-100 mb-1">Total Predictions</h3>
-                                <p className="text-3xl font-bold">{totalPredictions}</p>
+                                <p className="text-3xl font-bold">{analyticsData.totalPredictions}</p>
                                 <p className="text-xs text-blue-200 mt-1">Analytics available</p>
                             </div>
                             <div className="bg-blue-400 bg-opacity-30 p-3 rounded-lg">
@@ -678,7 +635,7 @@ const AnalyticsTab = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-sm font-medium text-green-100 mb-1">Health Score</h3>
-                                <p className="text-3xl font-bold">{healthScore.toFixed(0)}</p>
+                                <p className="text-3xl font-bold">{analyticsData.healthScore.toFixed(0)}</p>
                                 <p className="text-xs text-green-200 mt-1">out of 100</p>
                             </div>
                             <div className="bg-green-400 bg-opacity-30 p-3 rounded-lg">
@@ -693,7 +650,7 @@ const AnalyticsTab = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-sm font-medium text-orange-100 mb-1">Risk Score</h3>
-                                <p className="text-3xl font-bold">{(avgRiskScore * 100).toFixed(1)}%</p>
+                                <p className="text-3xl font-bold">{(analyticsData.avgRiskScore * 100).toFixed(1)}%</p>
                                 <p className="text-xs text-orange-200 mt-1">Average risk</p>
                             </div>
                             <div className="bg-orange-400 bg-opacity-30 p-3 rounded-lg">
@@ -706,7 +663,7 @@ const AnalyticsTab = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-sm font-medium text-purple-100 mb-1">Data Quality</h3>
-                                <p className="text-2xl font-bold">{extractedDataQuality}</p>
+                                <p className="text-2xl font-bold">{analyticsData.dataQuality}</p>
                                 <p className="text-xs text-purple-200 mt-1">Analysis grade</p>
                             </div>
                             <div className="bg-purple-400 bg-opacity-30 p-3 rounded-lg">
@@ -720,56 +677,48 @@ const AnalyticsTab = () => {
 
                 {/* Charts Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Risk Distribution Chart */}
                     <RiskDistributionChart
-                        data={riskDistribution}
+                        data={analyticsData.riskDistribution}
                         title="Risk Distribution Analysis"
                     />
-
-                    {/* Trends Chart */}
                     <TrendsChart
-                        data={trendAnalysis}
+                        data={analyticsData.trendAnalysis}
                         title="Performance Trends"
                     />
                 </div>
 
                 {/* Factor Analysis - Full Width */}
                 <FactorsChart
-                    data={factorContribution}
+                    data={analyticsData.factorContribution}
                     title="Top Risk Factors Analysis"
                 />
 
                 {/* Summary Insights */}
-                <SummaryInsightsCard data={data} />
+                <SummaryInsightsCard insights={analyticsData.summaryInsights} />
 
                 {/* Peer Comparison */}
-                {data.peer_comparison && Object.keys(data.peer_comparison).length > 0 && (
+                {analyticsData.peerComparison && Object.keys(analyticsData.peerComparison).length > 0 && (
                     <div className="bg-white p-6 rounded-xl shadow-lg border">
                         <div className="flex items-center mb-6">
                             <TrendingUp className="h-6 w-6 text-indigo-600 mr-2" />
                             <h3 className="text-lg font-semibold text-gray-900">Peer Comparison</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {data.peer_comparison.overall && (
+                            {analyticsData.peerComparison.overall && (
                                 <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                                     <h4 className="font-semibold text-blue-900 mb-3">Overall Performance</h4>
                                     <div className="text-3xl font-bold text-blue-800 mb-2">
-                                        {safeExtractValue(data.peer_comparison.overall, 'percentile', 50)}%
+                                        {typeof analyticsData.peerComparison.overall.percentile === 'number'
+                                            ? analyticsData.peerComparison.overall.percentile
+                                            : 50}%
                                     </div>
                                     <p className="text-sm text-blue-700">
                                         You perform <strong className="text-blue-900">
-                                            {safeExtractString(data.peer_comparison.overall, 'comparison', 'average')}
+                                            {typeof analyticsData.peerComparison.overall.comparison === 'string'
+                                                ? analyticsData.peerComparison.overall.comparison
+                                                : 'average'}
                                         </strong> than this percentile of peers
                                     </p>
-                                </div>
-                            )}
-                            {data.peer_comparison.industry_benchmark && (
-                                <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                                    <h4 className="font-semibold text-green-900 mb-3">Industry Benchmark</h4>
-                                    <div className="text-2xl font-bold text-green-800 mb-2">
-                                        {safeExtractString(data.peer_comparison.industry_benchmark, 'performance_rating', 'Good')}
-                                    </div>
-                                    <p className="text-sm text-green-700">Performance Rating</p>
                                 </div>
                             )}
                         </div>
@@ -778,6 +727,7 @@ const AnalyticsTab = () => {
             </div>
         );
     };
+
     /**
      * Main render
      */
@@ -840,7 +790,7 @@ const AnalyticsTab = () => {
                             <span>⚡ Advanced Insights</span>
                         </div>
                         <div className="flex items-center space-x-4 text-sm">
-                            <span>Quality: <strong>{extractedDataQuality}</strong></span>
+                            <span>Quality: <strong>{analyticsData.dataQuality}</strong></span>
                             <div className="px-3 py-1 bg-white/10 rounded-full">
                                 FinDistress AI Analytics
                             </div>
@@ -853,4 +803,3 @@ const AnalyticsTab = () => {
 };
 
 export default AnalyticsTab;
-

@@ -1,1267 +1,587 @@
-// import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-// import axios from 'axios';
-// import qs from 'qs';
-// import { useNotifications } from './NotificationContext';
-
-// // CRITICAL FIX: Correct API base URL with /api/v1 suffix
-// const API_BASE_URL = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
-// const AuthContext = createContext(null);
-
-// export const useAuth = () => {
-//     const context = useContext(AuthContext);
-//     if (!context) {
-//         throw new Error('useAuth must be used within an AuthProvider');
-//     }
-//     return context;
-// };
-
-// const AUTH_STATES = {
-//     LOADING: 'loading',
-//     AUTHENTICATED: 'authenticated',
-//     UNAUTHENTICATED: 'unauthenticated'
-// };
-
-// export const AuthProvider = ({ children }) => {
-//     const [user, setUser] = useState(null);
-//     const [authState, setAuthState] = useState(AUTH_STATES.LOADING);
-//     const [accessToken, setAccessToken] = useState(null);
-//     const [refreshToken, setRefreshToken] = useState(null);
-//     const [userPreferences, setUserPreferences] = useState(null);
-//     const { addNotification, addApiErrorNotification } = useNotifications();
-//     const initializationRef = useRef(false);
-//     const debugRef = useRef(false);
-
-//     const apiClient = axios.create({
-//         baseURL: API_BASE_URL,
-//         timeout: 30000,
-//         headers: {
-//             'Content-Type': 'application/json',
-//             'Accept': 'application/json',
-//         },
-//     });
-
-//     const setAuthorizationHeader = (token) => {
-//         if (token) {
-//             apiClient.defaults.headers.Authorization = `Bearer ${token}`;
-//         } else {
-//             delete apiClient.defaults.headers.Authorization;
-//         }
-//     };
-
-//     // FIXED: Get authentication headers for API calls
-//     const getAuthHeaders = useCallback(() => {
-//         const headers = {
-//             'Content-Type': 'application/json',
-//             'Accept': 'application/json',
-//         };
-
-//         if (accessToken) {
-//             headers.Authorization = `Bearer ${accessToken}`;
-//         }
-
-//         return headers;
-//     }, [accessToken]);
-
-//     useEffect(() => {
-//         setAuthorizationHeader(accessToken);
-//     }, [accessToken]);
-
-//     // Enhanced response interceptor with better error handling
-//     useEffect(() => {
-//         const responseInterceptor = apiClient.interceptors.response.use(
-//             response => response,
-//             async error => {
-//                 const originalRequest = error.config;
-
-//                 if (error.response?.status === 401 && !originalRequest._retry) {
-//                     originalRequest._retry = true;
-
-//                     if (refreshToken && originalRequest.url !== '/login') {
-//                         try {
-//                             console.log('🔄 Attempting token refresh...');
-//                             const refreshResponse = await axios.post(`${API_BASE_URL}/refresh`, {
-//                                 refresh_token: refreshToken
-//                             }, {
-//                                 headers: { 'Content-Type': 'application/json' }
-//                             });
-
-//                             const { access_token, refresh_token } = refreshResponse.data;
-//                             localStorage.setItem('accessToken', access_token);
-
-//                             if (refresh_token) {
-//                                 localStorage.setItem('refreshToken', refresh_token);
-//                                 setRefreshToken(refresh_token);
-//                             }
-
-//                             setAccessToken(access_token);
-//                             setAuthorizationHeader(access_token);
-//                             originalRequest.headers.Authorization = `Bearer ${access_token}`;
-
-//                             console.log('✅ Token refreshed successfully');
-//                             return apiClient(originalRequest);
-//                         } catch (refreshError) {
-//                             console.error('❌ Token refresh failed:', refreshError);
-//                             signOut();
-//                             return Promise.reject(refreshError);
-//                         }
-//                     } else {
-//                         console.log('❌ No refresh token available, signing out');
-//                         signOut();
-//                     }
-//                 }
-
-//                 return Promise.reject(error);
-//             }
-//         );
-
-//         return () => apiClient.interceptors.response.eject(responseInterceptor);
-//     }, [refreshToken]);
-
-//     const signIn = useCallback(async (username, password) => {
-//         if (!username?.trim() || !password?.trim()) {
-//             addNotification('Please provide both username and password', 'error');
-//             return { success: false, error: 'Missing credentials' };
-//         }
-
-//         setAuthState(AUTH_STATES.LOADING);
-
-//         try {
-//             console.log('🔑 Attempting JSON login...');
-//             const response = await apiClient.post('/login', {
-//                 username: username.trim(),
-//                 password: password.trim(),
-//             });
-
-//             const { access_token, refresh_token } = response.data;
-
-//             if (!access_token) {
-//                 throw new Error('No access token received');
-//             }
-
-//             localStorage.setItem('accessToken', access_token);
-//             if (refresh_token) {
-//                 localStorage.setItem('refreshToken', refresh_token);
-//                 setRefreshToken(refresh_token);
-//             }
-
-//             setAccessToken(access_token);
-//             setAuthorizationHeader(access_token);
-
-//             // Get user profile
-//             const userResponse = await apiClient.get('/users/me');
-//             const userData = userResponse.data;
-
-//             setUser(userData);
-//             setAuthState(AUTH_STATES.AUTHENTICATED);
-
-//             // Load user preferences
-//             try {
-//                 await loadUserPreferences();
-//             } catch (prefError) {
-//                 console.warn('Could not load user preferences:', prefError);
-//             }
-
-//             addNotification(`Welcome back, ${userData.full_name || userData.username}!`, 'success');
-//             console.log('✅ Login successful:', userData.username);
-
-//             return { success: true, user: userData };
-
-//         } catch (error) {
-//             console.error('❌ JSON login failed, trying form data:', error);
-
-//             try {
-//                 const formData = qs.stringify({
-//                     username: username.trim(),
-//                     password: password.trim()
-//                 });
-
-//                 const response = await apiClient.post('/token', formData, {
-//                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-//                 });
-
-//                 const { access_token, refresh_token } = response.data;
-
-//                 if (!access_token) {
-//                     throw new Error('No access token received');
-//                 }
-
-//                 localStorage.setItem('accessToken', access_token);
-//                 if (refresh_token) {
-//                     localStorage.setItem('refreshToken', refresh_token);
-//                     setRefreshToken(refresh_token);
-//                 }
-
-//                 setAccessToken(access_token);
-//                 setAuthorizationHeader(access_token);
-
-//                 const userResponse = await apiClient.get('/users/me');
-//                 const userData = userResponse.data;
-
-//                 setUser(userData);
-//                 setAuthState(AUTH_STATES.AUTHENTICATED);
-
-//                 // Load user preferences
-//                 try {
-//                     await loadUserPreferences();
-//                 } catch (prefError) {
-//                     console.warn('Could not load user preferences:', prefError);
-//                 }
-
-//                 addNotification(`Welcome back, ${userData.full_name || userData.username}!`, 'success');
-//                 console.log('✅ Form login successful:', userData.username);
-
-//                 return { success: true, user: userData };
-
-//             } catch (formError) {
-//                 console.error('❌ Both login methods failed:', formError);
-//                 setAuthState(AUTH_STATES.UNAUTHENTICATED);
-
-//                 let errorMessage = 'Login failed. Please check your credentials.';
-//                 if (formError.response?.status === 401) {
-//                     errorMessage = 'Invalid username or password.';
-//                 } else if (formError.code === 'ERR_NETWORK') {
-//                     errorMessage = 'Cannot connect to server. Please try again.';
-//                 } else if (formError.response?.data?.detail) {
-//                     errorMessage = formError.response.data.detail;
-//                 }
-
-//                 addNotification(errorMessage, 'error');
-//                 return { success: false, error: errorMessage };
-//             }
-//         }
-//     }, [addNotification, addApiErrorNotification]);
-
-//     const signUp = useCallback(async (username, email, password, fullName = null) => {
-//         if (!username?.trim() || !email?.trim() || !password?.trim()) {
-//             addNotification('Please fill in all required fields', 'error');
-//             return { success: false, error: 'Missing required fields' };
-//         }
-
-//         setAuthState(AUTH_STATES.LOADING);
-
-//         try {
-//             console.log('🔑 Attempting registration...');
-//             await apiClient.post('/register', {
-//                 username: username.trim(),
-//                 email: email.trim(),
-//                 password: password.trim(),
-//                 full_name: fullName?.trim() || username.trim(),
-//             });
-
-//             console.log('✅ Registration successful, attempting login...');
-//             addNotification('Registration successful! Logging you in...', 'success');
-
-//             return await signIn(username.trim(), password.trim());
-//         } catch (error) {
-//             console.error('❌ Registration failed:', error);
-//             setAuthState(AUTH_STATES.UNAUTHENTICATED);
-
-//             let errorMessage = 'Registration failed. Please try again.';
-//             if (error.response?.data?.detail) {
-//                 errorMessage = error.response.data.detail;
-//             } else if (error.code === 'ERR_NETWORK') {
-//                 errorMessage = 'Cannot connect to server. Please try again.';
-//             }
-
-//             addNotification(errorMessage, 'error');
-//             return { success: false, error: errorMessage };
-//         }
-//     }, [signIn, addNotification]);
-
-//     const signOut = useCallback(() => {
-//         console.log('🚪 Signing out...');
-//         localStorage.removeItem('accessToken');
-//         localStorage.removeItem('refreshToken');
-//         setUser(null);
-//         setAccessToken(null);
-//         setRefreshToken(null);
-//         setUserPreferences(null);
-//         setAuthState(AUTH_STATES.UNAUTHENTICATED);
-//         setAuthorizationHeader(null);
-//         addNotification('Successfully signed out', 'info');
-//     }, [addNotification]);
-
-//     const isAdmin = useCallback(() => {
-//         return user?.is_admin === true;
-//     }, [user]);
-
-//     const getUserProfile = useCallback(async () => {
-//         if (!accessToken) return null;
-
-//         try {
-//             const response = await apiClient.get('/users/me');
-//             setUser(response.data);
-//             return response.data;
-//         } catch (error) {
-//             console.error('Failed to get user profile:', error);
-//             if (error.response?.status === 401) {
-//                 signOut();
-//             }
-//             return null;
-//         }
-//     }, [accessToken, signOut]);
-
-//     // Update user profile
-//     const updateProfile = useCallback(async (profileData) => {
-//         if (!accessToken) {
-//             addNotification('Please sign in first', 'error');
-//             return { success: false };
-//         }
-
-//         try {
-//             const response = await apiClient.put('/users/me', profileData);
-//             setUser(response.data);
-//             addNotification('Profile updated successfully!', 'success');
-//             return { success: true, user: response.data };
-//         } catch (error) {
-//             console.error('Profile update failed:', error);
-//             const errorMessage = error.response?.data?.detail || 'Profile update failed';
-//             addNotification(errorMessage, 'error');
-//             return { success: false, error: errorMessage };
-//         }
-//     }, [accessToken, addNotification]);
-
-//     // Load user preferences - Fixed to avoid infinite loop
-//     const loadUserPreferences = useCallback(async () => {
-//         if (!accessToken) return null;
-
-//         try {
-//             const response = await apiClient.get('/users/me/preferences');
-//             setUserPreferences(response.data);
-//             return response.data;
-//         } catch (error) {
-//             console.error('Failed to load preferences:', error);
-//             // Don't show error notification for preferences as it's not critical
-//             return null;
-//         }
-//     }, [accessToken]);
-
-//     // Update user preferences
-//     const updatePreferences = useCallback(async (preferences) => {
-//         if (!accessToken) {
-//             addNotification('Please sign in first', 'error');
-//             return { success: false };
-//         }
-
-//         try {
-//             const response = await apiClient.put('/users/me/preferences', preferences);
-//             setUserPreferences(response.data.preferences);
-//             addNotification('Preferences updated successfully!', 'success');
-//             return { success: true, preferences: response.data.preferences };
-//         } catch (error) {
-//             console.error('Preferences update failed:', error);
-//             const errorMessage = error.response?.data?.detail || 'Preferences update failed';
-//             addNotification(errorMessage, 'error');
-//             return { success: false, error: errorMessage };
-//         }
-//     }, [accessToken, addNotification]);
-
-//     // Get analytics data
-//     const getAnalytics = useCallback(async (days = 30) => {
-//         if (!accessToken) return null;
-
-//         try {
-//             console.log(`📊 Fetching analytics data for ${days} days...`);
-//             const response = await apiClient.get(`/analytics?days=${days}`);
-//             console.log('✅ Analytics data received:', response.data);
-//             return response.data;
-//         } catch (error) {
-//             console.error('❌ Failed to get analytics:', error);
-//             const errorMessage = error.response?.data?.detail || 'Analytics unavailable';
-//             addNotification(errorMessage, 'error');
-//             return null;
-//         }
-//     }, [accessToken, addNotification]);
-
-//     // Get insights data
-//     const getInsights = useCallback(async () => {
-//         if (!accessToken) return null;
-
-//         try {
-//             console.log('🧠 Fetching insights data...');
-//             const response = await apiClient.get('/insights/fast');
-//             console.log('✅ Insights data received:', response.data);
-//             return response.data;
-//         } catch (error) {
-//             console.error('❌ Failed to get insights:', error);
-//             const errorMessage = error.response?.data?.detail || 'Insights unavailable';
-//             addNotification(errorMessage, 'error');
-//             return null;
-//         }
-//     }, [accessToken, addNotification]);
-
-//     // Get dashboard data
-//     const getDashboard = useCallback(async () => {
-//         if (!accessToken) return null;
-
-//         try {
-//             console.log('📈 Fetching dashboard data...');
-//             const response = await apiClient.get('/dashboard');
-//             console.log('✅ Dashboard data received:', response.data);
-//             return response.data;
-//         } catch (error) {
-//             console.error('❌ Failed to get dashboard:', error);
-//             const errorMessage = error.response?.data?.detail || 'Dashboard unavailable';
-//             addNotification(errorMessage, 'error');
-//             return null;
-//         }
-//     }, [accessToken, addNotification]);
-
-//     // Test server connectivity
-//     const testConnection = useCallback(async () => {
-//         try {
-//             console.log('🔍 Testing server connection...');
-//             const response = await fetch(`${API_BASE_URL}/health`);
-//             if (response.ok) {
-//                 const data = await response.json();
-//                 console.log('✅ Server connection test passed:', data);
-//                 return { success: true, data };
-//             } else {
-//                 throw new Error(`HTTP ${response.status}`);
-//             }
-//         } catch (error) {
-//             console.error('❌ Server connection test failed:', error);
-//             return { success: false, error: error.message };
-//         }
-//     }, []);
-
-//     // Enhanced initialization
-//     useEffect(() => {
-//         const initializeAuth = async () => {
-//             if (initializationRef.current) return;
-//             initializationRef.current = true;
-
-//             console.log('🚀 Initializing authentication...');
-//             const token = localStorage.getItem('accessToken');
-//             const storedRefreshToken = localStorage.getItem('refreshToken');
-
-//             if (!token) {
-//                 console.log('🔍 No token found, user not authenticated');
-//                 setAuthState(AUTH_STATES.UNAUTHENTICATED);
-//                 return;
-//             }
-
-//             try {
-//                 setAuthorizationHeader(token);
-//                 console.log('🔍 Validating stored token...');
-
-//                 const response = await apiClient.get('/users/me');
-//                 const userData = response.data;
-
-//                 setUser(userData);
-//                 setAccessToken(token);
-//                 setRefreshToken(storedRefreshToken);
-//                 setAuthState(AUTH_STATES.AUTHENTICATED);
-
-//                 // Load user preferences
-//                 try {
-//                     const preferences = await apiClient.get('/users/me/preferences');
-//                     setUserPreferences(preferences.data);
-//                 } catch (prefError) {
-//                     console.warn('Could not load user preferences during init:', prefError);
-//                 }
-
-//                 console.log('✅ Authentication initialized successfully for:', userData.username);
-//             } catch (error) {
-//                 console.error('❌ Token validation failed:', error);
-//                 // Clear invalid tokens
-//                 localStorage.removeItem('accessToken');
-//                 localStorage.removeItem('refreshToken');
-//                 setAuthState(AUTH_STATES.UNAUTHENTICATED);
-//             } finally {
-//                 initializationRef.current = false;
-//             }
-//         };
-
-//         initializeAuth();
-//     }, []); // Removed loadUserPreferences dependency to avoid infinite loop
-
-//     const debugApiConfiguration = useCallback(() => {
-//         if (debugRef.current) return;
-//         debugRef.current = true;
-
-//         console.log('🔧 API Configuration Debug:');
-//         console.log('Base URL:', apiClient.defaults.baseURL);
-//         console.log('Default headers:', apiClient.defaults.headers);
-//         console.log('Current token:', accessToken ? `${accessToken.substring(0, 20)}...` : 'None');
-//         console.log('User authenticated:', !!user);
-//         console.log('User is admin:', isAdmin());
-//         console.log('Auth state:', authState);
-
-//         // Test backend connection
-//         testConnection();
-//     }, [accessToken, user, authState, isAdmin, testConnection]);
-
-//     useEffect(() => {
-//         if (import.meta.env.MODE === 'development') {
-//             debugApiConfiguration();
-//         }
-//     }, [debugApiConfiguration]);
-
-//     const contextValue = {
-//         // User state
-//         user,
-//         userPreferences,
-//         loading: authState === AUTH_STATES.LOADING,
-//         accessToken,
-//         token: accessToken, // ADDED: For compatibility
-//         isAuthenticated: authState === AUTH_STATES.AUTHENTICATED && !!user && !!accessToken,
-
-//         // Auth state object for compatibility with usePredictionData hook
-//         authState: {
-//             isAuthenticated: authState === AUTH_STATES.AUTHENTICATED && !!user && !!accessToken,
-//             token: accessToken,
-//         },
-
-//         // Authentication methods
-//         signIn,
-//         signUp,
-//         signOut,
-
-//         // User methods
-//         isAdmin,
-//         getUserProfile,
-//         updateProfile,
-
-//         // Preferences methods
-//         loadUserPreferences,
-//         updatePreferences,
-
-//         // Data methods
-//         getAnalytics,
-//         getInsights,
-//         getDashboard,
-
-//         // Utility methods
-//         getAuthHeaders, // FIXED: This was missing and needed by usePredictionData
-//         testConnection,
-
-//         // API client for direct use
-//         apiClient,
-
-//         // Debug method
-//         debugApiConfiguration,
-//     };
-
-//     return (
-//         <AuthContext.Provider value={contextValue}>
-//             {children}
-//         </AuthContext.Provider>
-//     );
-// };
-
-// export default AuthProvider;
-
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import axios from 'axios';
-import qs from 'qs';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { useNotifications } from './NotificationContext';
 
-// FIXED: Correct API base URL with /api/v1 suffix
-const API_BASE_URL = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
-const AuthContext = createContext(null);
+// Enhanced AuthContext with proper token persistence and auto-refresh
+const AuthContext = createContext();
 
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider');
+// Authentication states
+const AUTH_ACTIONS = {
+    LOGIN_START: 'LOGIN_START',
+    LOGIN_SUCCESS: 'LOGIN_SUCCESS',
+    LOGIN_FAILURE: 'LOGIN_FAILURE',
+    LOGOUT: 'LOGOUT',
+    TOKEN_REFRESH: 'TOKEN_REFRESH',
+    SET_LOADING: 'SET_LOADING',
+    UPDATE_USER: 'UPDATE_USER',
+    RESET_ERROR: 'RESET_ERROR'
+};
+
+// Initial auth state
+const initialState = {
+    user: null,
+    accessToken: null,
+    refreshToken: null,
+    isAuthenticated: false,
+    isLoading: true,
+    error: null,
+    tokenExpiry: null,
+    lastActivity: null
+};
+
+// Auth reducer
+const authReducer = (state, action) => {
+    switch (action.type) {
+        case AUTH_ACTIONS.SET_LOADING:
+            return {
+                ...state,
+                isLoading: action.payload
+            };
+
+        case AUTH_ACTIONS.LOGIN_START:
+            return {
+                ...state,
+                isLoading: true,
+                error: null
+            };
+
+        case AUTH_ACTIONS.LOGIN_SUCCESS:
+            return {
+                ...state,
+                user: action.payload.user,
+                accessToken: action.payload.accessToken,
+                refreshToken: action.payload.refreshToken,
+                isAuthenticated: true,
+                isLoading: false,
+                error: null,
+                tokenExpiry: action.payload.tokenExpiry,
+                lastActivity: Date.now()
+            };
+
+        case AUTH_ACTIONS.LOGIN_FAILURE:
+            return {
+                ...state,
+                user: null,
+                accessToken: null,
+                refreshToken: null,
+                isAuthenticated: false,
+                isLoading: false,
+                error: action.payload,
+                tokenExpiry: null,
+                lastActivity: null
+            };
+
+        case AUTH_ACTIONS.TOKEN_REFRESH:
+            return {
+                ...state,
+                accessToken: action.payload.accessToken,
+                refreshToken: action.payload.refreshToken,
+                tokenExpiry: action.payload.tokenExpiry,
+                lastActivity: Date.now(),
+                error: null
+            };
+
+        case AUTH_ACTIONS.UPDATE_USER:
+            return {
+                ...state,
+                user: { ...state.user, ...action.payload },
+                lastActivity: Date.now()
+            };
+
+        case AUTH_ACTIONS.LOGOUT:
+            return {
+                ...initialState,
+                isLoading: false
+            };
+
+        case AUTH_ACTIONS.RESET_ERROR:
+            return {
+                ...state,
+                error: null
+            };
+
+        default:
+            return state;
     }
-    return context;
 };
 
-const AUTH_STATES = {
-    LOADING: 'loading',
-    AUTHENTICATED: 'authenticated',
-    UNAUTHENTICATED: 'unauthenticated'
+// FIXED: Storage utilities for secure token management
+const AUTH_STORAGE_KEYS = {
+    ACCESS_TOKEN: 'findistress_access_token',
+    REFRESH_TOKEN: 'findistress_refresh_token',
+    USER_DATA: 'findistress_user_data',
+    TOKEN_EXPIRY: 'findistress_token_expiry',
+    LAST_ACTIVITY: 'findistress_last_activity'
 };
 
-// FIXED: Token validation utility
-const isTokenExpired = (token) => {
-    if (!token) return true;
-
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const now = Date.now() / 1000;
-        // Add 5 minute buffer to prevent edge cases
-        return payload.exp < (now + 300);
-    } catch (error) {
-        console.error('Error parsing token:', error);
-        return true;
-    }
-};
-
-// FIXED: Token refresh queue to prevent multiple simultaneous refresh attempts
-let isRefreshing = false;
-let failedQueue = [];
-
-const processQueue = (error, token = null) => {
-    failedQueue.forEach(prom => {
-        if (error) {
-            prom.reject(error);
-        } else {
-            prom.resolve(token);
+const storage = {
+    setItem: (key, value) => {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (error) {
+            console.warn('Failed to save to localStorage:', error);
         }
-    });
+    },
 
-    failedQueue = [];
+    getItem: (key) => {
+        try {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : null;
+        } catch (error) {
+            console.warn('Failed to read from localStorage:', error);
+            return null;
+        }
+    },
+
+    removeItem: (key) => {
+        try {
+            localStorage.removeItem(key);
+        } catch (error) {
+            console.warn('Failed to remove from localStorage:', error);
+        }
+    },
+
+    clear: () => {
+        try {
+            Object.values(AUTH_STORAGE_KEYS).forEach(key => {
+                localStorage.removeItem(key);
+            });
+        } catch (error) {
+            console.warn('Failed to clear localStorage:', error);
+        }
+    }
 };
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [authState, setAuthState] = useState(AUTH_STATES.LOADING);
-    const [accessToken, setAccessToken] = useState(null);
-    const [refreshToken, setRefreshToken] = useState(null);
-    const [userPreferences, setUserPreferences] = useState(null);
-    const [lastActivity, setLastActivity] = useState(Date.now());
+    const [authState, dispatch] = useReducer(authReducer, initialState);
     const { addNotification } = useNotifications();
-    const initializationRef = useRef(false);
-    const activityTimeoutRef = useRef(null);
-    const isInitializedRef = useRef(false);
 
-    // FIXED: Enhanced API client with better error handling
-    const apiClient = axios.create({
-        baseURL: API_BASE_URL,
-        timeout: 30000,
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
-    });
+    // Refs for managing timers and preventing memory leaks
+    const refreshTimerRef = useRef(null);
+    const activityTimerRef = useRef(null);
+    const isRefreshingRef = useRef(false);
 
-    const setAuthorizationHeader = (token) => {
-        if (token && !isTokenExpired(token)) {
-            apiClient.defaults.headers.Authorization = `Bearer ${token}`;
-        } else {
-            delete apiClient.defaults.headers.Authorization;
-        }
-    };
+    // FIXED: API Configuration
+    const API_BASE = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
 
-    // FIXED: Get authentication headers for API calls
-    const getAuthHeaders = useCallback(() => {
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        };
-
-        if (accessToken && !isTokenExpired(accessToken)) {
-            headers.Authorization = `Bearer ${accessToken}`;
-        }
-
-        return headers;
-    }, [accessToken]);
-
-    // FIXED: Track user activity to prevent unnecessary logouts
+    // CRITICAL FIX: Activity tracking to prevent auto-logout on active users
     const updateActivity = useCallback(() => {
-        setLastActivity(Date.now());
+        const now = Date.now();
+        storage.setItem(AUTH_STORAGE_KEYS.LAST_ACTIVITY, now);
 
-        // Clear existing timeout
-        if (activityTimeoutRef.current) {
-            clearTimeout(activityTimeoutRef.current);
+        if (authState.isAuthenticated) {
+            dispatch({
+                type: AUTH_ACTIONS.UPDATE_USER,
+                payload: { lastActivity: now }
+            });
         }
+    }, [authState.isAuthenticated]);
 
-        // Set new timeout for 1 hour of inactivity
-        activityTimeoutRef.current = setTimeout(() => {
-            console.log('🕐 Auto-logout due to inactivity');
-            signOut(false); // Auto logout
-        }, 60 * 60 * 1000); // 1 hour
+    // CRITICAL FIX: Check if user should be auto-logged out due to inactivity
+    const checkInactivity = useCallback(() => {
+        const lastActivity = storage.getItem(AUTH_STORAGE_KEYS.LAST_ACTIVITY);
+        const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hour in milliseconds
+
+        if (lastActivity && Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
+            console.log('🔒 Auto-logout due to inactivity');
+            logout(false); // Silent logout without notification
+            return false;
+        }
+        return true;
     }, []);
 
-    // FIXED: Enhanced token refresh function
+    // CRITICAL FIX: Enhanced token refresh with proper error handling
     const refreshAccessToken = useCallback(async () => {
-        const storedRefreshToken = localStorage.getItem('refreshToken');
-
-        if (!storedRefreshToken) {
-            throw new Error('No refresh token available');
+        if (isRefreshingRef.current) {
+            console.log('🔄 Token refresh already in progress');
+            return false;
         }
 
-        if (isRefreshing) {
-            // If already refreshing, wait for it to complete
-            return new Promise((resolve, reject) => {
-                failedQueue.push({ resolve, reject });
-            });
+        const refreshToken = storage.getItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+        if (!refreshToken) {
+            console.log('❌ No refresh token available');
+            logout(false);
+            return false;
         }
 
-        isRefreshing = true;
+        // Check inactivity before refreshing
+        if (!checkInactivity()) {
+            return false;
+        }
+
+        isRefreshingRef.current = true;
 
         try {
-            console.log('🔄 Refreshing access token...');
-            const response = await axios.post(`${API_BASE_URL}/refresh`, {
-                refresh_token: storedRefreshToken
-            }, {
-                headers: { 'Content-Type': 'application/json' },
-                timeout: 10000
+            console.log('🔄 Attempting token refresh...');
+
+            const response = await fetch(`${API_BASE}/auth/refresh`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ refresh_token: refreshToken })
             });
 
-            const { access_token, refresh_token } = response.data;
-
-            if (!access_token) {
-                throw new Error('No access token received from refresh');
+            if (!response.ok) {
+                throw new Error(`Token refresh failed: ${response.status}`);
             }
 
-            // Update tokens
-            localStorage.setItem('accessToken', access_token);
-            setAccessToken(access_token);
-            setAuthorizationHeader(access_token);
+            const data = await response.json();
 
-            if (refresh_token) {
-                localStorage.setItem('refreshToken', refresh_token);
-                setRefreshToken(refresh_token);
-            }
+            // Calculate new expiry time
+            const newExpiry = Date.now() + (data.expires_in * 1000);
 
-            processQueue(null, access_token);
+            // Store new tokens
+            storage.setItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
+            storage.setItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+            storage.setItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY, newExpiry);
+
+            // Update state
+            dispatch({
+                type: AUTH_ACTIONS.TOKEN_REFRESH,
+                payload: {
+                    accessToken: data.access_token,
+                    refreshToken: data.refresh_token,
+                    tokenExpiry: newExpiry
+                }
+            });
+
             console.log('✅ Token refreshed successfully');
-            updateActivity(); // Update activity on successful refresh
 
-            return access_token;
+            // Schedule next refresh
+            scheduleTokenRefresh(newExpiry);
+
+            return true;
+
         } catch (error) {
             console.error('❌ Token refresh failed:', error);
-            processQueue(error, null);
-
-            // Only sign out if it's a real authentication error, not a network error
-            if (error.response?.status === 401 || error.response?.status === 403) {
-                signOut(false);
-            }
-
-            throw error;
+            logout(false); // Silent logout
+            return false;
         } finally {
-            isRefreshing = false;
+            isRefreshingRef.current = false;
         }
-    }, [updateActivity]);
+    }, [API_BASE, checkInactivity]);
 
-    // FIXED: Enhanced response interceptor with better retry logic
-    useEffect(() => {
-        const responseInterceptor = apiClient.interceptors.response.use(
-            response => {
-                updateActivity(); // Update activity on successful API calls
-                return response;
-            },
-            async error => {
-                const originalRequest = error.config;
-
-                // Don't retry if it's not a 401 or if already retried
-                if (error.response?.status !== 401 || originalRequest._retry) {
-                    return Promise.reject(error);
-                }
-
-                // Don't retry login/register endpoints
-                if (originalRequest.url?.includes('/login') ||
-                    originalRequest.url?.includes('/register') ||
-                    originalRequest.url?.includes('/token')) {
-                    return Promise.reject(error);
-                }
-
-                originalRequest._retry = true;
-
-                try {
-                    const newToken = await refreshAccessToken();
-                    originalRequest.headers.Authorization = `Bearer ${newToken}`;
-                    return apiClient(originalRequest);
-                } catch (refreshError) {
-                    console.error('❌ Token refresh in interceptor failed:', refreshError);
-                    // Don't automatically sign out on network errors during initialization
-                    if (!isInitializedRef.current) {
-                        console.log('⏳ Skipping logout during initialization');
-                        return Promise.reject(refreshError);
-                    }
-
-                    if (refreshError.response?.status === 401 || refreshError.response?.status === 403) {
-                        signOut(false);
-                    }
-                    return Promise.reject(refreshError);
-                }
-            }
-        );
-
-        return () => apiClient.interceptors.response.eject(responseInterceptor);
-    }, [refreshAccessToken, updateActivity]);
-
-    // FIXED: Enhanced sign out that preserves user choice
-    const signOut = useCallback((userInitiated = false) => {
-        console.log('🚪 Signing out...', userInitiated ? '(user initiated)' : '(automatic)');
-
-        // Clear timeouts
-        if (activityTimeoutRef.current) {
-            clearTimeout(activityTimeoutRef.current);
+    // CRITICAL FIX: Smart token refresh scheduling
+    const scheduleTokenRefresh = useCallback((expiry) => {
+        if (refreshTimerRef.current) {
+            clearTimeout(refreshTimerRef.current);
         }
 
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        setUser(null);
-        setAccessToken(null);
-        setRefreshToken(null);
-        setUserPreferences(null);
-        setAuthState(AUTH_STATES.UNAUTHENTICATED);
-        setAuthorizationHeader(null);
+        const now = Date.now();
+        const timeUntilExpiry = expiry - now;
+        const refreshTime = Math.max(0, timeUntilExpiry - (5 * 60 * 1000)); // Refresh 5 minutes before expiry
 
-        if (userInitiated) {
-            addNotification('Successfully signed out', 'info');
+        console.log(`⏰ Scheduling token refresh in ${Math.round(refreshTime / 1000)}s`);
+
+        if (refreshTime > 0) {
+            refreshTimerRef.current = setTimeout(() => {
+                refreshAccessToken();
+            }, refreshTime);
         } else {
-            addNotification('Session expired due to inactivity', 'info');
+            // Token is about to expire or has expired
+            refreshAccessToken();
         }
-    }, [addNotification]);
+    }, [refreshAccessToken]);
 
-    const signIn = useCallback(async (username, password) => {
-        if (!username?.trim() || !password?.trim()) {
-            addNotification('Please provide both username and password', 'error');
-            return { success: false, error: 'Missing credentials' };
-        }
+    // CRITICAL FIX: Activity monitoring to reset inactivity timer
+    const setupActivityMonitoring = useCallback(() => {
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
 
-        setAuthState(AUTH_STATES.LOADING);
+        const handleActivity = () => {
+            updateActivity();
+
+            // Reset inactivity timer
+            if (activityTimerRef.current) {
+                clearTimeout(activityTimerRef.current);
+            }
+
+            // Set up inactivity check for 1 hour + 1 minute
+            activityTimerRef.current = setTimeout(() => {
+                checkInactivity();
+            }, 61 * 60 * 1000);
+        };
+
+        events.forEach(event => {
+            document.addEventListener(event, handleActivity, { passive: true });
+        });
+
+        return () => {
+            events.forEach(event => {
+                document.removeEventListener(event, handleActivity);
+            });
+        };
+    }, [updateActivity, checkInactivity]);
+
+    // FIXED: Enhanced login function with proper token storage
+    const login = useCallback(async (credentials) => {
+        dispatch({ type: AUTH_ACTIONS.LOGIN_START });
 
         try {
             console.log('🔑 Attempting JSON login...');
-            const response = await apiClient.post('/login', {
-                username: username.trim(),
-                password: password.trim(),
+
+            // Try JSON login first
+            let response = await fetch(`${API_BASE}/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(credentials),
+                timeout: 30000
             });
 
-            const { access_token, refresh_token } = response.data;
+            // If JSON login fails, try form data
+            if (!response.ok) {
+                console.log('❌ JSON login failed, trying form data...');
 
-            if (!access_token) {
-                throw new Error('No access token received');
+                const formData = new URLSearchParams();
+                formData.append('username', credentials.username);
+                formData.append('password', credentials.password);
+
+                response = await fetch(`${API_BASE}/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData,
+                    timeout: 30000
+                });
             }
 
-            // FIXED: Validate token before storing
-            if (isTokenExpired(access_token)) {
-                throw new Error('Received expired token');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Login failed: ${response.status}`);
             }
 
-            localStorage.setItem('accessToken', access_token);
-            if (refresh_token) {
-                localStorage.setItem('refreshToken', refresh_token);
-                setRefreshToken(refresh_token);
-            }
-
-            setAccessToken(access_token);
-            setAuthorizationHeader(access_token);
+            const data = await response.json();
 
             // Get user profile
-            const userResponse = await apiClient.get('/users/me');
-            const userData = userResponse.data;
+            const userResponse = await fetch(`${API_BASE}/users/me`, {
+                headers: {
+                    'Authorization': `Bearer ${data.access_token}`
+                }
+            });
 
-            setUser(userData);
-            setAuthState(AUTH_STATES.AUTHENTICATED);
-            updateActivity(); // Start activity tracking
-            isInitializedRef.current = true; // Mark as initialized
+            const userData = userResponse.ok ? await userResponse.json() : {
+                username: credentials.username,
+                email: '',
+                full_name: credentials.username
+            };
 
-            // Load user preferences
-            try {
-                await loadUserPreferences();
-            } catch (prefError) {
-                console.warn('Could not load user preferences:', prefError);
-            }
+            // Calculate token expiry
+            const tokenExpiry = Date.now() + (data.expires_in * 1000);
 
-            addNotification(`Welcome back, ${userData.full_name || userData.username}!`, 'success');
-            console.log('✅ Login successful:', userData.username);
+            // Store authentication data
+            storage.setItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
+            storage.setItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+            storage.setItem(AUTH_STORAGE_KEYS.USER_DATA, userData);
+            storage.setItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY, tokenExpiry);
+            storage.setItem(AUTH_STORAGE_KEYS.LAST_ACTIVITY, Date.now());
+
+            // Update state
+            dispatch({
+                type: AUTH_ACTIONS.LOGIN_SUCCESS,
+                payload: {
+                    user: userData,
+                    accessToken: data.access_token,
+                    refreshToken: data.refresh_token,
+                    tokenExpiry
+                }
+            });
+
+            // Schedule token refresh
+            scheduleTokenRefresh(tokenExpiry);
+
+            console.log('✅ Login successful');
+            addNotification('Welcome back! You are now signed in.', 'success');
 
             return { success: true, user: userData };
 
         } catch (error) {
-            console.error('❌ JSON login failed, trying form data:', error);
+            console.error('❌ Login failed:', error);
 
-            try {
-                const formData = qs.stringify({
-                    username: username.trim(),
-                    password: password.trim()
-                });
-
-                const response = await apiClient.post('/token', formData, {
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                });
-
-                const { access_token, refresh_token } = response.data;
-
-                if (!access_token || isTokenExpired(access_token)) {
-                    throw new Error('No valid access token received');
-                }
-
-                localStorage.setItem('accessToken', access_token);
-                if (refresh_token) {
-                    localStorage.setItem('refreshToken', refresh_token);
-                    setRefreshToken(refresh_token);
-                }
-
-                setAccessToken(access_token);
-                setAuthorizationHeader(access_token);
-
-                const userResponse = await apiClient.get('/users/me');
-                const userData = userResponse.data;
-
-                setUser(userData);
-                setAuthState(AUTH_STATES.AUTHENTICATED);
-                updateActivity(); // Start activity tracking
-                isInitializedRef.current = true; // Mark as initialized
-
-                // Load user preferences
-                try {
-                    await loadUserPreferences();
-                } catch (prefError) {
-                    console.warn('Could not load user preferences:', prefError);
-                }
-
-                addNotification(`Welcome back, ${userData.full_name || userData.username}!`, 'success');
-                console.log('✅ Form login successful:', userData.username);
-
-                return { success: true, user: userData };
-
-            } catch (formError) {
-                console.error('❌ Both login methods failed:', formError);
-                setAuthState(AUTH_STATES.UNAUTHENTICATED);
-
-                let errorMessage = 'Login failed. Please check your credentials.';
-                if (formError.response?.status === 401) {
-                    errorMessage = 'Invalid username or password.';
-                } else if (formError.code === 'ERR_NETWORK') {
-                    errorMessage = 'Cannot connect to server. Please try again.';
-                } else if (formError.response?.data?.detail) {
-                    errorMessage = formError.response.data.detail;
-                }
-
-                addNotification(errorMessage, 'error');
-                return { success: false, error: errorMessage };
-            }
-        }
-    }, [addNotification, updateActivity]);
-
-    const signUp = useCallback(async (username, email, password, fullName = null) => {
-        if (!username?.trim() || !email?.trim() || !password?.trim()) {
-            addNotification('Please fill in all required fields', 'error');
-            return { success: false, error: 'Missing required fields' };
-        }
-
-        setAuthState(AUTH_STATES.LOADING);
-
-        try {
-            console.log('🔑 Attempting registration...');
-            await apiClient.post('/register', {
-                username: username.trim(),
-                email: email.trim(),
-                password: password.trim(),
-                full_name: fullName?.trim() || username.trim(),
+            dispatch({
+                type: AUTH_ACTIONS.LOGIN_FAILURE,
+                payload: error.message
             });
 
-            console.log('✅ Registration successful, attempting login...');
-            addNotification('Registration successful! Logging you in...', 'success');
+            addNotification(
+                error.message.includes('timeout')
+                    ? 'Connection timeout. Please check your internet connection and try again.'
+                    : error.message || 'Login failed. Please check your credentials.',
+                'error'
+            );
 
-            return await signIn(username.trim(), password.trim());
-        } catch (error) {
-            console.error('❌ Registration failed:', error);
-            setAuthState(AUTH_STATES.UNAUTHENTICATED);
-
-            let errorMessage = 'Registration failed. Please try again.';
-            if (error.response?.data?.detail) {
-                errorMessage = error.response.data.detail;
-            } else if (error.code === 'ERR_NETWORK') {
-                errorMessage = 'Cannot connect to server. Please try again.';
-            }
-
-            addNotification(errorMessage, 'error');
-            return { success: false, error: errorMessage };
-        }
-    }, [signIn, addNotification]);
-
-    const isAdmin = useCallback(() => {
-        return user?.is_admin === true;
-    }, [user]);
-
-    const getUserProfile = useCallback(async () => {
-        if (!accessToken || isTokenExpired(accessToken)) return null;
-
-        try {
-            const response = await apiClient.get('/users/me');
-            setUser(response.data);
-            updateActivity();
-            return response.data;
-        } catch (error) {
-            console.error('Failed to get user profile:', error);
-            if (error.response?.status === 401 && isInitializedRef.current) {
-                signOut(false);
-            }
-            return null;
-        }
-    }, [accessToken, updateActivity]);
-
-    // Update user profile
-    const updateProfile = useCallback(async (profileData) => {
-        if (!accessToken) {
-            addNotification('Please sign in first', 'error');
-            return { success: false };
-        }
-
-        try {
-            const response = await apiClient.put('/users/me', profileData);
-            setUser(response.data);
-            updateActivity();
-            addNotification('Profile updated successfully!', 'success');
-            return { success: true, user: response.data };
-        } catch (error) {
-            console.error('Profile update failed:', error);
-            const errorMessage = error.response?.data?.detail || 'Profile update failed';
-            addNotification(errorMessage, 'error');
-            return { success: false, error: errorMessage };
-        }
-    }, [accessToken, addNotification, updateActivity]);
-
-    // Load user preferences - Fixed to avoid infinite loop
-    const loadUserPreferences = useCallback(async () => {
-        if (!accessToken || isTokenExpired(accessToken)) return null;
-
-        try {
-            const response = await apiClient.get('/users/me/preferences');
-            setUserPreferences(response.data);
-            return response.data;
-        } catch (error) {
-            console.error('Failed to load preferences:', error);
-            // Don't show error notification for preferences as it's not critical
-            return null;
-        }
-    }, [accessToken]);
-
-    // Update user preferences
-    const updatePreferences = useCallback(async (preferences) => {
-        if (!accessToken) {
-            addNotification('Please sign in first', 'error');
-            return { success: false };
-        }
-
-        try {
-            const response = await apiClient.put('/users/me/preferences', preferences);
-            setUserPreferences(response.data.preferences);
-            updateActivity();
-            addNotification('Preferences updated successfully!', 'success');
-            return { success: true, preferences: response.data.preferences };
-        } catch (error) {
-            console.error('Preferences update failed:', error);
-            const errorMessage = error.response?.data?.detail || 'Preferences update failed';
-            addNotification(errorMessage, 'error');
-            return { success: false, error: errorMessage };
-        }
-    }, [accessToken, addNotification, updateActivity]);
-
-    // Get analytics data
-    const getAnalytics = useCallback(async (days = 30) => {
-        if (!accessToken) return null;
-
-        try {
-            console.log(`📊 Fetching analytics data for ${days} days...`);
-            const response = await apiClient.get(`/analytics?days=${days}`);
-            console.log('✅ Analytics data received:', response.data);
-            updateActivity();
-            return response.data;
-        } catch (error) {
-            console.error('❌ Failed to get analytics:', error);
-            const errorMessage = error.response?.data?.detail || 'Analytics unavailable';
-            addNotification(errorMessage, 'error');
-            return null;
-        }
-    }, [accessToken, addNotification, updateActivity]);
-
-    // Get insights data
-    const getInsights = useCallback(async () => {
-        if (!accessToken) return null;
-
-        try {
-            console.log('🧠 Fetching insights data...');
-            const response = await apiClient.get('/insights/fast');
-            console.log('✅ Insights data received:', response.data);
-            updateActivity();
-            return response.data;
-        } catch (error) {
-            console.error('❌ Failed to get insights:', error);
-            const errorMessage = error.response?.data?.detail || 'Insights unavailable';
-            addNotification(errorMessage, 'error');
-            return null;
-        }
-    }, [accessToken, addNotification, updateActivity]);
-
-    // Get dashboard data
-    const getDashboard = useCallback(async () => {
-        if (!accessToken) return null;
-
-        try {
-            console.log('📈 Fetching dashboard data...');
-            const response = await apiClient.get('/dashboard');
-            console.log('✅ Dashboard data received:', response.data);
-            updateActivity();
-            return response.data;
-        } catch (error) {
-            console.error('❌ Failed to get dashboard:', error);
-            const errorMessage = error.response?.data?.detail || 'Dashboard unavailable';
-            addNotification(errorMessage, 'error');
-            return null;
-        }
-    }, [accessToken, addNotification, updateActivity]);
-
-    // Test server connectivity
-    const testConnection = useCallback(async () => {
-        try {
-            console.log('🔍 Testing server connection...');
-            const response = await fetch(`${API_BASE_URL}/health`);
-            if (response.ok) {
-                const data = await response.json();
-                console.log('✅ Server connection test passed:', data);
-                return { success: true, data };
-            } else {
-                throw new Error(`HTTP ${response.status}`);
-            }
-        } catch (error) {
-            console.error('❌ Server connection test failed:', error);
             return { success: false, error: error.message };
         }
-    }, []);
+    }, [API_BASE, addNotification, scheduleTokenRefresh]);
 
-    // FIXED: Enhanced initialization with proper token preservation
-    useEffect(() => {
-        const initializeAuth = async () => {
-            if (initializationRef.current) return;
-            initializationRef.current = true;
+    // FIXED: Enhanced logout function
+    const logout = useCallback(async (showNotification = true) => {
+        try {
+            // Clear timers
+            if (refreshTimerRef.current) {
+                clearTimeout(refreshTimerRef.current);
+                refreshTimerRef.current = null;
+            }
+            if (activityTimerRef.current) {
+                clearTimeout(activityTimerRef.current);
+                activityTimerRef.current = null;
+            }
+
+            // Clear storage
+            storage.clear();
+
+            // Update state
+            dispatch({ type: AUTH_ACTIONS.LOGOUT });
+
+            if (showNotification) {
+                addNotification('You have been signed out successfully.', 'info');
+            }
+
+            console.log('🔒 Logout completed');
+
+        } catch (error) {
+            console.error('❌ Logout error:', error);
+            // Still proceed with logout even if there's an error
+            dispatch({ type: AUTH_ACTIONS.LOGOUT });
+        }
+    }, [addNotification]);
+
+    // CRITICAL FIX: Initialize authentication state from storage
+    const initializeAuth = useCallback(async () => {
+        dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
+
+        try {
+            const accessToken = storage.getItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN);
+            const refreshToken = storage.getItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+            const userData = storage.getItem(AUTH_STORAGE_KEYS.USER_DATA);
+            const tokenExpiry = storage.getItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY);
 
             console.log('🚀 Initializing authentication...');
-            const token = localStorage.getItem('accessToken');
-            const storedRefreshToken = localStorage.getItem('refreshToken');
 
-            if (!token) {
-                console.log('🔍 No token found, user not authenticated');
-                setAuthState(AUTH_STATES.UNAUTHENTICATED);
-                isInitializedRef.current = true;
+            if (!accessToken || !refreshToken || !userData) {
+                console.log('🔍 No stored auth data found');
+                dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
                 return;
             }
 
-            // CRITICAL FIX: Don't check expiration during initialization
-            // Let the server validate the token
-            try {
-                setAuthorizationHeader(token);
-                setAccessToken(token);
-                setRefreshToken(storedRefreshToken);
+            // Check if user was inactive for too long
+            if (!checkInactivity()) {
+                dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+                return;
+            }
 
-                console.log('🔍 Validating stored token...');
-                const response = await apiClient.get('/users/me');
-                const userData = response.data;
+            const now = Date.now();
 
-                setUser(userData);
-                setAuthState(AUTH_STATES.AUTHENTICATED);
-                updateActivity(); // Start activity tracking
-                isInitializedRef.current = true;
+            // Check if token is expired or about to expire
+            if (tokenExpiry && tokenExpiry - now < 60000) { // Less than 1 minute left
+                console.log('🔄 Token expired or expiring soon, attempting refresh...');
+                const refreshSuccess = await refreshAccessToken();
 
-                // Load user preferences
-                try {
-                    const preferences = await apiClient.get('/users/me/preferences');
-                    setUserPreferences(preferences.data);
-                } catch (prefError) {
-                    console.warn('Could not load user preferences during init:', prefError);
+                if (!refreshSuccess) {
+                    dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+                    return;
                 }
-
-                console.log('✅ Authentication initialized successfully for:', userData.username);
-            } catch (error) {
-                console.error('❌ Token validation failed during initialization:', error);
-
-                // CRITICAL FIX: Try refresh before giving up
-                if (storedRefreshToken && (error.response?.status === 401 || error.response?.status === 403)) {
-                    try {
-                        console.log('🔄 Attempting token refresh during initialization...');
-                        await refreshAccessToken();
-                        // If refresh succeeds, try validation again
-                        const response = await apiClient.get('/users/me');
-                        const userData = response.data;
-
-                        setUser(userData);
-                        setAuthState(AUTH_STATES.AUTHENTICATED);
-                        updateActivity();
-                        isInitializedRef.current = true;
-
-                        console.log('✅ Authentication recovered via refresh for:', userData.username);
-                    } catch (refreshError) {
-                        console.error('❌ Token refresh during initialization failed:', refreshError);
-                        localStorage.removeItem('accessToken');
-                        localStorage.removeItem('refreshToken');
-                        setAuthState(AUTH_STATES.UNAUTHENTICATED);
-                        isInitializedRef.current = true;
+            } else {
+                // Token is still valid
+                dispatch({
+                    type: AUTH_ACTIONS.LOGIN_SUCCESS,
+                    payload: {
+                        user: userData,
+                        accessToken,
+                        refreshToken,
+                        tokenExpiry
                     }
-                } else {
-                    // Network error or other non-auth error - keep trying
-                    console.log('🔄 Network error during initialization, retrying...');
-                    setTimeout(() => {
-                        initializationRef.current = false;
-                        initializeAuth();
-                    }, 2000);
+                });
+
+                // Schedule refresh for this token
+                if (tokenExpiry) {
+                    scheduleTokenRefresh(tokenExpiry);
                 }
             }
-        };
 
-        initializeAuth();
-    }, [refreshAccessToken, updateActivity]);
+            console.log('✅ Authentication initialized successfully');
 
-    // FIXED: Activity tracking with browser events
-    useEffect(() => {
-        if (authState === AUTH_STATES.AUTHENTICATED) {
-            const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-
-            const handleActivity = () => {
-                updateActivity();
-            };
-
-            // Add event listeners
-            events.forEach(event => {
-                document.addEventListener(event, handleActivity, true);
-            });
-
-            // Initial activity update
-            updateActivity();
-
-            // Cleanup
-            return () => {
-                events.forEach(event => {
-                    document.removeEventListener(event, handleActivity, true);
-                });
-                if (activityTimeoutRef.current) {
-                    clearTimeout(activityTimeoutRef.current);
-                }
-            };
+        } catch (error) {
+            console.error('❌ Auth initialization failed:', error);
+            storage.clear();
+        } finally {
+            dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
         }
-    }, [authState, updateActivity]);
+    }, [checkInactivity, refreshAccessToken, scheduleTokenRefresh]);
 
+    // Get auth headers for API requests
+    const getAuthHeaders = useCallback(() => {
+        const token = authState.accessToken || storage.getItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN);
+        return token ? {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        } : {
+            'Content-Type': 'application/json'
+        };
+    }, [authState.accessToken]);
+
+    // Update user profile
+    const updateUser = useCallback((updates) => {
+        const updatedUser = { ...authState.user, ...updates };
+        storage.setItem(AUTH_STORAGE_KEYS.USER_DATA, updatedUser);
+        dispatch({
+            type: AUTH_ACTIONS.UPDATE_USER,
+            payload: updates
+        });
+    }, [authState.user]);
+
+    // Clear error
+    const clearError = useCallback(() => {
+        dispatch({ type: AUTH_ACTIONS.RESET_ERROR });
+    }, []);
+
+    // FIXED: Initialize auth and set up activity monitoring on mount
+    useEffect(() => {
+        console.log('🚀 AuthProvider mounting...');
+
+        const cleanup = setupActivityMonitoring();
+        initializeAuth();
+
+        return () => {
+            console.log('🧹 AuthProvider unmounting...');
+            cleanup();
+            if (refreshTimerRef.current) {
+                clearTimeout(refreshTimerRef.current);
+            }
+            if (activityTimerRef.current) {
+                clearTimeout(activityTimerRef.current);
+            }
+        };
+    }, [setupActivityMonitoring, initializeAuth]);
+
+    // Computed values
+    const isAuthenticated = authState.isAuthenticated;
+    const user = authState.user;
+    const loading = authState.isLoading;
+    const error = authState.error;
+
+    // Context value
     const contextValue = {
-        // User state
+        // State
+        authState,
         user,
-        userPreferences,
-        loading: authState === AUTH_STATES.LOADING,
-        accessToken,
-        token: accessToken, // For compatibility
-        isAuthenticated: authState === AUTH_STATES.AUTHENTICATED && !!user && !!accessToken,
-        lastActivity,
+        isAuthenticated,
+        loading,
+        error,
 
-        // Auth state object for compatibility with usePredictionData hook
-        authState: {
-            isAuthenticated: authState === AUTH_STATES.AUTHENTICATED && !!user && !!accessToken,
-            token: accessToken,
-        },
-
-        // Authentication methods
-        signIn,
-        signUp,
-        signOut, // Will default to userInitiated = true when called from UI
-
-        // User methods
-        isAdmin,
-        getUserProfile,
-        updateProfile,
-
-        // Preferences methods
-        loadUserPreferences,
-        updatePreferences,
-
-        // Data methods
-        getAnalytics,
-        getInsights,
-        getDashboard,
-
-        // Utility methods
+        // Actions
+        login,
+        logout,
+        updateUser,
+        clearError,
         getAuthHeaders,
-        testConnection,
-        refreshAccessToken,
+        updateActivity,
 
-        // API client for direct use
-        apiClient,
+        // Computed values
+        isAdmin: user?.is_admin || false,
+        userName: user?.full_name || user?.username || 'User',
+        userEmail: user?.email || ''
     };
 
     return (
@@ -1271,4 +591,13 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-export default AuthProvider;
+// Custom hook to use auth context
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
+
+export default AuthContext;
