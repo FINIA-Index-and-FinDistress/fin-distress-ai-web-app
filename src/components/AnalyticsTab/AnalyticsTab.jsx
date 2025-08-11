@@ -861,8 +861,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import usePredictionData from "../../hooks/usePredictionData";
 
 /**
- * COMPLETE WORKING Analytics Tab - Final Version
- * This version WILL display your charts correctly
+ * FIXED Analytics Tab - Charts will now render correctly
  */
 const AnalyticsTab = () => {
     const { data, isLoading, error, refreshData } = usePredictionData('analytics');
@@ -884,15 +883,11 @@ const AnalyticsTab = () => {
     }, [refreshData, addNotification]);
 
     /**
-     * Debug logging - shows exactly what data we receive
+     * Debug logging
      */
     useEffect(() => {
         if (data) {
-            console.log('🎯 [AnalyticsTab] FINAL VERSION - Data received:', data);
-            console.log('🎯 Key metrics:', data.key_metrics);
-            console.log('🎯 Risk distribution:', data.key_metrics?.risk_distribution);
-            console.log('🎯 Trend analysis:', data.risk_trend_analysis);
-            console.log('🎯 Factor contribution:', data.factor_contribution);
+            console.log('🎯 [AnalyticsTab] Data received:', data);
         }
     }, [data]);
 
@@ -968,7 +963,7 @@ const AnalyticsTab = () => {
         );
     }
 
-    // Extract data using your exact backend structure
+    // Extract data safely
     const keyMetrics = data.key_metrics || {};
     const riskDistribution = keyMetrics.risk_distribution || [];
     const trendAnalysis = data.risk_trend_analysis || [];
@@ -980,11 +975,9 @@ const AnalyticsTab = () => {
     const dataQuality = keyMetrics.data_quality || 'Unknown';
 
     /**
-     * Working Risk Distribution Chart Component
+     * FIXED Risk Distribution Chart - Simplified approach
      */
-    const WorkingRiskDistributionChart = () => {
-        console.log('🎯 RiskDistributionChart rendering with:', riskDistribution);
-
+    const RiskDistributionChart = () => {
         if (!riskDistribution || riskDistribution.length === 0) {
             return (
                 <div className="bg-white p-6 rounded-xl shadow-lg border">
@@ -1003,6 +996,7 @@ const AnalyticsTab = () => {
         }
 
         const total = riskDistribution.reduce((sum, item) => sum + (item.value || 0), 0);
+        const colors = ['#22c55e', '#f59e0b', '#ef4444']; // Green, Yellow, Red
 
         return (
             <div className="bg-white p-6 rounded-xl shadow-lg border">
@@ -1016,50 +1010,46 @@ const AnalyticsTab = () => {
                     </span>
                 </div>
 
-                {/* Visual Pie Chart */}
-                <div className="mb-6">
-                    <div className="relative mx-auto w-48 h-48">
-                        {/* Create visual pie segments */}
-                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                {/* Simple Donut Chart */}
+                <div className="mb-6 flex justify-center">
+                    <div className="relative w-48 h-48">
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
+                            <circle
+                                cx="100"
+                                cy="100"
+                                r="80"
+                                fill="none"
+                                stroke="#f3f4f6"
+                                strokeWidth="20"
+                            />
                             {riskDistribution.map((item, index) => {
-                                const percentage = item.percentage || (total > 0 ? ((item.value / total) * 100) : 0);
-                                const colors = ['#22c55e', '#f59e0b', '#ef4444']; // Green, Yellow, Red
-                                const color = colors[index] || colors[0];
-
-                                // Calculate arc for pie slice
-                                const startAngle = index === 0 ? 0 :
-                                    riskDistribution.slice(0, index).reduce((acc, prev) => {
-                                        const prevPercent = prev.percentage || (total > 0 ? ((prev.value / total) * 100) : 0);
-                                        return acc + (prevPercent * 3.6); // Convert to degrees
+                                const percentage = total > 0 ? (item.value / total) * 100 : 0;
+                                const strokeDasharray = `${(percentage / 100) * 502.65} 502.65`; // 2*π*80
+                                const strokeDashoffset = index === 0 ? 0 :
+                                    -riskDistribution.slice(0, index).reduce((acc, prev) => {
+                                        const prevPercent = total > 0 ? (prev.value / total) * 100 : 0;
+                                        return acc + (prevPercent / 100) * 502.65;
                                     }, 0);
 
-                                const endAngle = startAngle + (percentage * 3.6);
-
-                                // Convert to radians for path calculation
-                                const startRad = (startAngle * Math.PI) / 180;
-                                const endRad = (endAngle * Math.PI) / 180;
-
-                                const x1 = 50 + 40 * Math.cos(startRad);
-                                const y1 = 50 + 40 * Math.sin(startRad);
-                                const x2 = 50 + 40 * Math.cos(endRad);
-                                const y2 = 50 + 40 * Math.sin(endRad);
-
-                                const largeArc = percentage > 50 ? 1 : 0;
-
                                 return (
-                                    <path
+                                    <circle
                                         key={index}
-                                        d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                                        fill={color}
-                                        stroke="white"
-                                        strokeWidth="2"
+                                        cx="100"
+                                        cy="100"
+                                        r="80"
+                                        fill="none"
+                                        stroke={colors[index] || colors[0]}
+                                        strokeWidth="20"
+                                        strokeDasharray={strokeDasharray}
+                                        strokeDashoffset={strokeDashoffset}
+                                        className="transition-all duration-1000"
                                     />
                                 );
                             })}
                         </svg>
 
                         {/* Center circle with total */}
-                        <div className="absolute inset-12 rounded-full bg-white shadow-inner flex items-center justify-center border-4 border-gray-100">
+                        <div className="absolute inset-0 flex items-center justify-center">
                             <div className="text-center">
                                 <div className="text-2xl font-bold text-gray-800">{total}</div>
                                 <div className="text-xs text-gray-500">Total</div>
@@ -1069,15 +1059,15 @@ const AnalyticsTab = () => {
                 </div>
 
                 {/* Legend */}
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {riskDistribution.map((item, index) => {
-                        const percentage = item.percentage || (total > 0 ? ((item.value / total) * 100).toFixed(1) : 0);
-                        const colors = [
+                        const percentage = total > 0 ? ((item.value / total) * 100).toFixed(1) : 0;
+                        const colorConfig = [
                             { bg: 'bg-green-500', text: 'text-green-800', bgLight: 'bg-green-50', border: 'border-green-200' },
                             { bg: 'bg-yellow-500', text: 'text-yellow-800', bgLight: 'bg-yellow-50', border: 'border-yellow-200' },
                             { bg: 'bg-red-500', text: 'text-red-800', bgLight: 'bg-red-50', border: 'border-red-200' }
                         ];
-                        const colorSet = colors[index] || colors[0];
+                        const colorSet = colorConfig[index] || colorConfig[0];
 
                         return (
                             <div key={index} className={`p-4 rounded-lg border ${colorSet.bgLight} ${colorSet.border}`}>
@@ -1093,9 +1083,9 @@ const AnalyticsTab = () => {
                                         <span className="text-xs text-gray-500 ml-1">({percentage}%)</span>
                                     </div>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div className="w-full bg-gray-200 rounded-full h-2">
                                     <div
-                                        className={`h-3 rounded-full ${colorSet.bg} transition-all duration-1000`}
+                                        className={`h-2 rounded-full ${colorSet.bg} transition-all duration-1000`}
                                         style={{ width: `${percentage}%` }}
                                     ></div>
                                 </div>
@@ -1108,11 +1098,9 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * Working Trends Chart Component
+     * FIXED Trends Chart
      */
-    const WorkingTrendsChart = () => {
-        console.log('🎯 TrendsChart rendering with:', trendAnalysis);
-
+    const TrendsChart = () => {
         if (!trendAnalysis || trendAnalysis.length === 0) {
             return (
                 <div className="bg-white p-6 rounded-xl shadow-lg border">
@@ -1142,6 +1130,27 @@ const AnalyticsTab = () => {
                     </span>
                 </div>
 
+                {/* Simple Line Chart */}
+                <div className="mb-6">
+                    <div className="h-32 flex items-end justify-between">
+                        {trendAnalysis.map((item, index) => {
+                            const height = (item.health_score || 0) / 100 * 100; // Convert to percentage of container
+                            return (
+                                <div key={index} className="flex flex-col items-center flex-1">
+                                    <div
+                                        className="w-8 bg-gradient-to-t from-indigo-500 to-indigo-400 rounded-t transition-all duration-1000"
+                                        style={{ height: `${Math.max(height, 5)}%` }}
+                                    ></div>
+                                    <div className="text-xs text-gray-600 mt-2 text-center">
+                                        {item.period}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Trend Details */}
                 <div className="space-y-3">
                     {trendAnalysis.map((item, index) => (
                         <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -1169,11 +1178,9 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * Working Factors Chart Component
+     * FIXED Factors Chart
      */
-    const WorkingFactorsChart = () => {
-        console.log('🎯 FactorsChart rendering with:', factorContribution);
-
+    const FactorsChart = () => {
         if (!factorContribution || factorContribution.length === 0) {
             return (
                 <div className="bg-white p-6 rounded-xl shadow-lg border">
@@ -1217,11 +1224,11 @@ const AnalyticsTab = () => {
                                             {index + 1}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-semibold text-gray-900">
+                                            <div className="text-sm font-semibold text-gray-900 truncate">
                                                 {item.factor}
                                             </div>
                                             {item.explanation && (
-                                                <div className="text-xs text-gray-500 mt-1">
+                                                <div className="text-xs text-gray-500 mt-1 line-clamp-2">
                                                     {item.explanation}
                                                 </div>
                                             )}
@@ -1229,7 +1236,7 @@ const AnalyticsTab = () => {
                                     </div>
                                     <div className="text-right ml-4">
                                         <div className="text-lg font-bold text-indigo-600">
-                                            {item.contribution_percentage.toFixed(1)}%
+                                            {item.contribution_percentage ? item.contribution_percentage.toFixed(1) : '0.0'}%
                                         </div>
                                     </div>
                                 </div>
@@ -1335,24 +1342,12 @@ const AnalyticsTab = () => {
 
                     {/* Charts Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <WorkingRiskDistributionChart />
-                        <WorkingTrendsChart />
+                        <RiskDistributionChart />
+                        <TrendsChart />
                     </div>
 
                     {/* Factors Chart - Full Width */}
-                    <WorkingFactorsChart />
-
-                    {/* Debug Information - Remove this in production */}
-                    <div className="bg-gray-900 text-green-400 p-4 rounded-lg">
-                        <h4 className="text-white text-sm font-semibold mb-2">🎯 Live Data Debug (Remove in Production):</h4>
-                        <div className="text-xs space-y-1">
-                            <div>✅ Total Predictions: {totalPredictions}</div>
-                            <div>✅ Risk Distribution Items: {riskDistribution.length}</div>
-                            <div>✅ Trend Analysis Items: {trendAnalysis.length}</div>
-                            <div>✅ Factor Contribution Items: {factorContribution.length}</div>
-                            <div>✅ Data Quality: {dataQuality}</div>
-                        </div>
-                    </div>
+                    <FactorsChart />
                 </div>
             </div>
         </div>
