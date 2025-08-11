@@ -1,0 +1,12 @@
+# Netlify _redirects file - place this in your public folder
+
+# SPA fallback - redirect all routes to index.html for client-side routing
+/*    /index.html   200
+
+# API proxy rules (optional - if you need to proxy API calls)
+/api/*  https://findistress-ai-web-app-backend.onrender.com/api/:splat  200
+
+# Specific redirects for common paths
+/predict    /index.html    200
+/analytics  /index.html    200
+/insights   /index.html    200
