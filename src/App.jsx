@@ -1376,7 +1376,7 @@
 
 // export default App;
 
-// src/App.jsx - COMPLETE FIXED VERSION with Profile/Preferences Routes
+// src/App.jsx - COMPLETE VERSION with Preferences Commented Out
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -1396,9 +1396,10 @@ import NavigationTabs from './components/NavigationTabs';
 import usePredictionData from './hooks/usePredictionData';
 import { Brain, BarChart2, Target, AlertCircle, RefreshCw, Lock, TrendingUp } from 'lucide-react';
 
-// Import Profile and Preferences components
+// Import Profile component only (Preferences commented out)
 import ProfileSettings from './components/user/ProfileSettings';
-import UserPreferences from './components/user/UserPreferences';
+// COMMENTED OUT: Preferences import
+// import UserPreferences from './components/user/UserPreferences';
 
 /**
  * FIXED Protected Route Component
@@ -1477,9 +1478,8 @@ const ProfilePage = ({ setShowAuthModal }) => {
     );
 };
 
-/**
- * Preferences Page Component
- */
+// COMMENTED OUT: Preferences Page Component
+/*
 const PreferencesPage = ({ setShowAuthModal }) => {
     const { user } = useAuth();
 
@@ -1493,6 +1493,7 @@ const PreferencesPage = ({ setShowAuthModal }) => {
         </div>
     );
 };
+*/
 
 /**
  * FIXED Enhanced Analytics Tab with safe data handling
@@ -1656,13 +1657,13 @@ const AppContent = () => {
 
     const { user, loading, error: authError } = authData;
 
-    // Determine active tab based on current route
+    // Determine active tab based on current route (PREFERENCES COMMENTED OUT)
     const getActiveTabFromRoute = (pathname) => {
         if (pathname === '/' || pathname === '/predict') return 'predict';
         if (pathname === '/analytics') return 'analytics';
         if (pathname === '/insights') return 'insights';
         if (pathname === '/profile') return 'profile';
-        if (pathname === '/preferences') return 'preferences';
+        // COMMENTED OUT: if (pathname === '/preferences') return 'preferences';
         return 'predict';
     };
 
@@ -1696,14 +1697,14 @@ const AppContent = () => {
         initializeApp();
     }, [loading, user]);
 
-    // Handle tab changes
+    // Handle tab changes (PREFERENCES COMMENTED OUT)
     const handleTabChange = (newTab) => {
         const routes = {
             predict: '/predict',
             analytics: '/analytics',
             insights: '/insights',
             profile: '/profile',
-            preferences: '/preferences'
+            // COMMENTED OUT: preferences: '/preferences'
         };
         navigate(routes[newTab] || '/predict');
     };
@@ -1714,9 +1715,10 @@ const AppContent = () => {
         setShowAuthModal(true);
     };
 
-    // Auto-redirect if user logs out on protected tab
+    // Auto-redirect if user logs out on protected tab (PREFERENCES COMMENTED OUT)
     useEffect(() => {
-        const protectedTabs = ['/analytics', '/insights', '/profile', '/preferences'];
+        const protectedTabs = ['/analytics', '/insights', '/profile'];
+        // COMMENTED OUT: const protectedTabs = ['/analytics', '/insights', '/profile', '/preferences'];
         if (!loading && !user && protectedTabs.includes(location.pathname)) {
             navigate('/predict');
         }
@@ -1786,8 +1788,9 @@ const AppContent = () => {
                     <WelcomeScreen onGetStarted={() => setShowAuthModal(true)} />
                 ) : (
                     <ErrorBoundary>
-                        {/* Mobile Navigation Tabs - only show for main tabs */}
-                        {!location.pathname.startsWith('/profile') && !location.pathname.startsWith('/preferences') && (
+                        {/* Mobile Navigation Tabs - only show for main tabs (PREFERENCES CONDITION COMMENTED OUT) */}
+                        {!location.pathname.startsWith('/profile') && (
+                            // COMMENTED OUT: {!location.pathname.startsWith('/profile') && !location.pathname.startsWith('/preferences') && (
                             <NavigationTabs
                                 activeTab={activeTab}
                                 setActiveTab={handleTabChange}
@@ -1837,6 +1840,7 @@ const AppContent = () => {
                                         </ProtectedRoute>
                                     }
                                 />
+                                {/* COMMENTED OUT: Preferences Route
                                 <Route
                                     path="/preferences"
                                     element={
@@ -1845,6 +1849,7 @@ const AppContent = () => {
                                         </ProtectedRoute>
                                     }
                                 />
+                                */}
                                 <Route path="*" element={<Navigate to="/" replace />} />
                             </Routes>
                         </div>

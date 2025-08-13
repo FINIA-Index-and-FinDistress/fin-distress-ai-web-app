@@ -315,7 +315,8 @@
 
 // src/components/UserMenu.jsx - COMPLETE UPDATED VERSION
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, LogOut, ChevronDown, Shield } from 'lucide-react';
+// import { User, Settings, LogOut, ChevronDown, Shield } from 'lucide-react';
+import { User, LogOut, ChevronDown, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -347,13 +348,13 @@ const UserMenu = ({ userMenuItems = [] }) => {
             description: 'Update your profile information',
             path: '/profile'
         },
-        {
-            id: 'preferences',
-            label: 'Preferences',
-            icon: Settings,
-            description: 'Customize your experience',
-            path: '/preferences'
-        }
+        // {
+        //     id: 'preferences',
+        //     label: 'Preferences',
+        //     icon: Settings,
+        //     description: 'Customize your experience',
+        //     path: '/preferences'
+        // }
     ];
 
     const menuItems = userMenuItems.length > 0 ? userMenuItems : defaultMenuItems;
