@@ -402,7 +402,7 @@ const COUNTRY_OPTIONS = [
     ...ROW_COUNTRIES.map(country => ({ label: country, value: country, region: 'ROW' }))
 ].sort((a, b) => a.label.localeCompare(b.label));
 
-const InputField = ({ name, value, onChange, config, error, required = true }) => {
+const InputField = ({ name, value, onChange, config, error, required = true, submitAttempted = false }) => {
     const [showTooltip, setShowTooltip] = useState(false);
 
     const {
@@ -442,8 +442,8 @@ const InputField = ({ name, value, onChange, config, error, required = true }) =
     const isEmpty = !value || value === '' || value === null || value === undefined;
     const showRequiredError = required && isEmpty && error;
 
-    // FIXED: Show "Required field" only when field is filled incorrectly (has error but not empty, or is required and has error)
-    const showRequiredText = required && !error && !showRequiredError && isEmpty;
+    // FIXED: Only show "Required field" when there's actually a validation error and user has attempted to submit
+    const showRequiredText = required && submitAttempted && isEmpty && !error;
 
     const renderInput = () => {
         if (isSelectField && fieldOptions.length > 0) {
@@ -555,7 +555,7 @@ const InputField = ({ name, value, onChange, config, error, required = true }) =
                         )}
                     </span>
 
-                    {/* FIXED: Info icon with hover tooltip */}
+                    {/* Info icon with hover tooltip */}
                     {description && (
                         <div
                             className="relative inline-block ml-2"
@@ -592,10 +592,10 @@ const InputField = ({ name, value, onChange, config, error, required = true }) =
                 )}
             </div>
 
-            {/* FIXED: Only show "Required field" text when field is empty and not in error state */}
+            {/* FIXED: Only show "Required field" when user has attempted to submit and field is empty */}
             {showRequiredText && (
                 <p className="text-xs text-red-400 mt-1 opacity-60">
-                    Required field
+                    This field is required
                 </p>
             )}
         </div>
