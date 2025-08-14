@@ -1908,6 +1908,7 @@
 // };
 
 // export default App;
+
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -2180,6 +2181,18 @@ const AppContent = () => {
 
     // FIXED: Safe auth hook usage - don't catch auth errors here
     const { user, loading, error: authError } = useAuth();
+    const { addNotification } = useNotifications();
+
+    // FIXED: Listen for auth notifications from AuthContext
+    useEffect(() => {
+        const handleAuthNotification = (event) => {
+            const { type, title, message, duration } = event.detail;
+            addNotification(message, type, { title, duration });
+        };
+
+        window.addEventListener('auth-notification', handleAuthNotification);
+        return () => window.removeEventListener('auth-notification', handleAuthNotification);
+    }, [addNotification]);
 
     // Determine active tab based on current route (PREFERENCES COMMENTED OUT)
     const getActiveTabFromRoute = (pathname) => {
@@ -2301,7 +2314,7 @@ const AppContent = () => {
                 />
             )}
 
-            {/* Global Notifications */}
+            {/* Global Notifications - FIXED: Always show notifications, even when not authenticated */}
             <NotificationsContainer />
 
             {/* Main Content */}

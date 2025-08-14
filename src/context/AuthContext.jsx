@@ -1128,6 +1128,19 @@ export const AuthProvider = ({ children }) => {
             console.log('Auto-logout due to inactivity');
             setSessionExpired(true);
             setError('You have been signed out due to inactivity. Please sign in again.');
+
+            // FIXED: Add notification for inactivity timeout
+            if (typeof window !== 'undefined' && window.dispatchEvent) {
+                window.dispatchEvent(new CustomEvent('auth-notification', {
+                    detail: {
+                        type: 'warning',
+                        title: 'Signed Out Due to Inactivity',
+                        message: 'You have been signed out due to inactivity. Please sign in again.',
+                        duration: 7000
+                    }
+                }));
+            }
+
             return false;
         }
         return true;
@@ -1478,6 +1491,19 @@ export const AuthProvider = ({ children }) => {
                 authStorage.clear();
                 setSessionExpired(true);
                 setError('Your session has expired. Please sign in again.');
+
+                // FIXED: Add notification for session expiry
+                if (typeof window !== 'undefined' && window.dispatchEvent) {
+                    window.dispatchEvent(new CustomEvent('auth-notification', {
+                        detail: {
+                            type: 'warning',
+                            title: 'Session Expired',
+                            message: 'Your session has expired. Please sign in again to continue.',
+                            duration: 7000
+                        }
+                    }));
+                }
+
                 setLoading(false);
                 return;
             }

@@ -588,6 +588,43 @@ const AuthModal = ({ showAuthModal, setShowAuthModal, authError, onSuccess }) =>
     }, [validationErrors.submit, authError, contextError, sessionExpired]);
 
     /**
+     * Show notification for authentication errors
+     */
+    const showAuthErrorNotification = useCallback((error) => {
+        if (error.includes('Invalid username or password')) {
+            addNotification('Invalid username or password. Please check your credentials and try again.', 'error', {
+                title: 'Sign In Failed',
+                duration: 6000
+            });
+        } else if (error.includes('username')) {
+            addNotification('Username already exists. Please choose a different username.', 'error', {
+                title: 'Registration Failed',
+                duration: 5000
+            });
+        } else if (error.includes('email')) {
+            addNotification('Email already registered. Please use a different email or try signing in.', 'error', {
+                title: 'Registration Failed',
+                duration: 5000
+            });
+        } else if (error.includes('Server error') || error.includes('500')) {
+            addNotification('Server error occurred. Please try again later.', 'error', {
+                title: 'Server Error',
+                duration: 5000
+            });
+        } else if (error.includes('Network error') || error.includes('connection')) {
+            addNotification('Network error. Please check your internet connection and try again.', 'error', {
+                title: 'Connection Error',
+                duration: 6000
+            });
+        } else {
+            addNotification(error, 'error', {
+                title: authMode === 'login' ? 'Sign In Failed' : 'Registration Failed',
+                duration: 5000
+            });
+        }
+    }, [addNotification, authMode]);
+
+    /**
      * Handle form submission
      */
     const handleSubmit = useCallback(async (e) => {
@@ -599,7 +636,10 @@ const AuthModal = ({ showAuthModal, setShowAuthModal, authError, onSuccess }) =>
         const errors = validateForm();
         if (Object.keys(errors).length > 0) {
             setValidationErrors(errors);
-            addNotification('Please correct the errors in the form', 'error');
+            addNotification('Please correct the errors in the form', 'warning', {
+                title: 'Form Error',
+                duration: 4000
+            });
             return;
         }
 
@@ -619,9 +659,14 @@ const AuthModal = ({ showAuthModal, setShowAuthModal, authError, onSuccess }) =>
             }
 
             if (result.success) {
+                // Show success notification
                 addNotification(
                     `Successfully ${authMode === 'login' ? 'signed in' : 'registered'}! Welcome to FinDistress AI.`,
-                    'success'
+                    'success',
+                    {
+                        title: authMode === 'login' ? 'Welcome Back!' : 'Account Created!',
+                        duration: 4000
+                    }
                 );
                 resetForm();
                 if (onSuccess) {
@@ -630,7 +675,10 @@ const AuthModal = ({ showAuthModal, setShowAuthModal, authError, onSuccess }) =>
                     handleClose();
                 }
             } else {
-                // Error is handled by the auth context and will be displayed via getErrorMessage
+                // Show error notification - this is the key fix!
+                if (result.error) {
+                    showAuthErrorNotification(result.error);
+                }
                 console.error('Authentication failed:', result.error);
             }
 
@@ -638,11 +686,14 @@ const AuthModal = ({ showAuthModal, setShowAuthModal, authError, onSuccess }) =>
             console.error('Authentication error:', error);
             const errorMessage = 'An unexpected error occurred. Please try again.';
             setValidationErrors({ submit: errorMessage });
-            addNotification(errorMessage, 'error');
+            addNotification(errorMessage, 'error', {
+                title: 'Unexpected Error',
+                duration: 5000
+            });
         } finally {
             setIsSubmitting(false);
         }
-    }, [formData, authMode, validateForm, signIn, signUp, loading, isSubmitting, addNotification, handleClose, onSuccess, resetForm, clearError, clearSessionExpired]);
+    }, [formData, authMode, validateForm, signIn, signUp, loading, isSubmitting, addNotification, handleClose, onSuccess, resetForm, clearError, clearSessionExpired, showAuthErrorNotification]);
 
     /**
      * Toggle between login and register modes
