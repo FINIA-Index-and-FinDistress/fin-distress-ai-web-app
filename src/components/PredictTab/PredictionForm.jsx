@@ -2179,7 +2179,7 @@ import { useAuth } from '../../context/AuthContext';
 
 /**
  * Professional prediction form for financial distress analysis
- * Now includes World Bank API integration and backend alignment
+ * Now uses field names that match the InputField component
  */
 const PredictionForm = () => {
     // Form state management
@@ -2207,7 +2207,7 @@ const PredictionForm = () => {
     ];
 
     /**
-     * Form sections configuration aligned with backend expectations
+     * Form sections configuration - using field names that match InputField component
      */
     const FORM_SECTIONS = useMemo(() => ({
         company: {
@@ -2248,7 +2248,7 @@ const PredictionForm = () => {
     }), []);
 
     /**
-     * Field configurations aligned with backend expectations and InputField component
+     * Field configurations - using field names that work with InputField component
      */
     const FIELD_CONFIGS = useMemo(() => ({
         // Company Profile
@@ -2258,7 +2258,6 @@ const PredictionForm = () => {
             placeholder: 'Select your industry sector',
             description: 'The primary industry your company operates in',
             required: true
-            // Options handled by InputField component
         },
         wk14: {
             label: 'Years in Operation',
@@ -2286,7 +2285,6 @@ const PredictionForm = () => {
             placeholder: 'Select your country',
             description: 'Country where your company is primarily based',
             required: true
-            // Options handled by InputField component
         },
         company_size: {
             label: 'Company Size',
@@ -2294,10 +2292,9 @@ const PredictionForm = () => {
             placeholder: 'Select company size',
             description: 'Number of employees in your company',
             required: true
-            // Options handled by InputField component
         },
 
-        // Performance & Obstacles - Backend Required
+        // Performance & Obstacles
         perf1: {
             label: 'Sales Performance (%)',
             type: 'number',
@@ -2319,14 +2316,13 @@ const PredictionForm = () => {
             step: 1
         },
 
-        // Financial Indicators - Backend Required (Binary fields using Yes/No)
+        // Financial Structure - Binary fields for working capital
         fin16: {
             label: 'Working Capital Financing',
             type: 'select',
             placeholder: 'Select financing type',
             description: 'Primary source for working capital financing',
             required: true
-            // Binary field - handled by InputField component
         },
         fin33: {
             label: 'Credit Line Usage',
@@ -2334,10 +2330,9 @@ const PredictionForm = () => {
             placeholder: 'Select usage status',
             description: 'Does your company have and use a credit line?',
             required: true
-            // Binary field - handled by InputField component
         },
 
-        // Financial Structure (Percentage fields)
+        // Financial Structure - Percentage fields
         Fin_bank: {
             label: 'Bank Financing (%)',
             type: 'number',
@@ -2390,54 +2385,47 @@ const PredictionForm = () => {
             type: 'select',
             placeholder: 'Select option',
             description: 'Is the top manager female?'
-            // Binary field - handled by InputField component
         },
         pvt_own: {
             label: 'Private Ownership',
             type: 'select',
             placeholder: 'Select option',
             description: 'Is there a domestic private shareholder present?'
-            // Binary field - handled by InputField component
         },
         con_own: {
             label: 'Concentrated Ownership',
             type: 'select',
             placeholder: 'Select option',
             description: 'Does the largest shareholder have ≥50% ownership?'
-            // Binary field - handled by InputField component
         },
 
-        // Business Operations
+        // Business Operations - Binary fields
         edu: {
             label: 'Unskilled Labor Obstacle',
             type: 'select',
             placeholder: 'Select option',
             description: 'Is inadequate workforce education an obstacle to growth?'
-            // Binary field - handled by InputField component
         },
         exports: {
             label: 'Export Activity',
             type: 'select',
             placeholder: 'Select option',
             description: 'Does your firm export ≥1% of its output?'
-            // Binary field - handled by InputField component
         },
         innov: {
             label: 'Product Innovation',
             type: 'select',
             placeholder: 'Select option',
             description: 'Does your firm invest in R&D?'
-            // Binary field - handled by InputField component
         },
         transp: {
             label: 'Financial Statements Audited',
             type: 'select',
             placeholder: 'Select option',
             description: 'Are financial statements certified by external auditor?'
-            // Binary field - handled by InputField component
         },
 
-        // Macroeconomic Data (World Bank Auto-fill Available)
+        // Macroeconomic Data
         GDP: {
             label: 'GDP Growth Rate (%)',
             type: 'number',
@@ -2494,93 +2482,26 @@ const PredictionForm = () => {
             required: true
         },
 
-        // ROW Region Only Fields (conditionally shown)
-        MarketCap: {
-            label: 'Market Capitalization (% of GDP)',
-            type: 'number',
-            placeholder: 'e.g., 50.0',
-            description: 'Stock market capitalization as percentage of GDP',
-            min: 0,
-            max: 300,
-            step: 0.1,
-            canAutoFill: true,
-            showForRegion: 'ROW'
-        },
-        GPR: {
-            label: 'Geopolitical Risk (%)',
-            type: 'number',
-            placeholder: 'e.g., 1.5',
-            description: 'Military expenditure as percentage of GDP',
-            min: 0,
-            max: 15,
-            step: 0.1,
-            canAutoFill: true,
-            showForRegion: 'ROW'
-        },
-        Size: {
-            label: 'Company Size Category',
-            type: 'select',
-            placeholder: 'Select company size',
-            description: 'Number of full-time employees',
-            showForRegion: 'ROW',
-            options: {
-                '1': 'Micro (1-4 employees)',
-                '2': 'Small (5-19 employees)',
-                '3': 'Medium (20-99 employees)',
-                '4': 'Large (100+ employees)'
-            }
-        },
-
-        // Business Environment
+        // Business Environment - Binary fields
         gifting: {
             label: 'Payments to Public Officials',
             type: 'select',
             placeholder: 'Select option',
             description: 'Does your firm make payments/gifts to public officials?'
-            // Binary field - handled by InputField component
         },
         pol_inst: {
             label: 'Political Instability Obstacle',
             type: 'select',
             placeholder: 'Select option',
             description: 'Is political instability the biggest obstacle to growth?'
-            // Binary field - handled by InputField component
         },
         infor_comp: {
             label: 'Informal Competition',
             type: 'select',
             placeholder: 'Select option',
             description: 'Are you competing against informal businesses?'
-            // Binary field - handled by InputField component
         }
     }), []);
-
-    /**
-     * Get fields for current section based on region
-     */
-    const getFieldsForRegion = useCallback((sectionKey, country) => {
-        const baseFields = FORM_SECTIONS[sectionKey]?.fields || [];
-
-        if (sectionKey === 'macro') {
-            // Determine region from country
-            const isROW = !AFRICAN_COUNTRIES.includes(country);
-
-            if (isROW) {
-                // ROW countries get additional fields
-                return [...baseFields, 'MarketCap', 'GPR'];
-            }
-            return baseFields; // AFR countries get base fields only
-        }
-
-        if (sectionKey === 'company' && country) {
-            const isROW = !AFRICAN_COUNTRIES.includes(country);
-            if (isROW) {
-                return [...baseFields, 'Size']; // Add Size field for ROW
-            }
-        }
-
-        return baseFields;
-    }, [FORM_SECTIONS, AFRICAN_COUNTRIES]);
 
     /**
      * Initialize form with default values
@@ -2594,7 +2515,7 @@ const PredictionForm = () => {
     }, [FIELD_CONFIGS]);
 
     /**
-     * Watch for country changes to trigger macro data fetching
+     * Watch for country changes
      */
     useEffect(() => {
         const country = formData.country2;
@@ -2609,13 +2530,11 @@ const PredictionForm = () => {
     const handleMacroAutoFill = useCallback((autoFilledData, metadata) => {
         console.log('Auto-filling macro data:', autoFilledData);
 
-        // Update form data with auto-filled values
         setFormData(prevData => ({
             ...prevData,
             ...autoFilledData
         }));
 
-        // Clear any existing errors for auto-filled fields
         const autoFilledFields = Object.keys(autoFilledData);
         setValidationErrors(prev => {
             const updated = { ...prev };
@@ -2625,7 +2544,6 @@ const PredictionForm = () => {
             return updated;
         });
 
-        // Show success notification
         if (metadata?.source === 'World Bank API') {
             addNotification(
                 `Auto-filled ${Object.keys(autoFilledData).length} macro indicators for ${metadata.country}`,
@@ -2720,24 +2638,13 @@ const PredictionForm = () => {
      * Validate current section only
      */
     const validateCurrentSection = useCallback(() => {
-        const country = formData.country2;
-        const currentFields = getFieldsForRegion(activeSection, country);
+        const currentFields = FORM_SECTIONS[activeSection].fields;
         const errors = {};
         let isValid = true;
 
         currentFields.forEach(field => {
             const config = FIELD_CONFIGS[field];
             const value = formData[field];
-
-            // Skip validation for fields not applicable to current region
-            if (config?.showForRegion) {
-                const isROW = !AFRICAN_COUNTRIES.includes(country);
-                const shouldShow = (config.showForRegion === 'ROW' && isROW) ||
-                    (config.showForRegion === 'AFR' && !isROW);
-                if (!shouldShow) {
-                    return; // Skip this field
-                }
-            }
 
             // Required field validation
             if (config?.required && (!value || value === '')) {
@@ -2764,14 +2671,13 @@ const PredictionForm = () => {
             }
         });
 
-        // Update validation errors for current section
         setValidationErrors(prev => ({
             ...prev,
             ...errors
         }));
 
         return isValid;
-    }, [activeSection, FIELD_CONFIGS, formData, getFieldsForRegion, AFRICAN_COUNTRIES]);
+    }, [activeSection, FORM_SECTIONS, FIELD_CONFIGS, formData]);
 
     /**
      * Run validation when form data changes
@@ -2802,7 +2708,6 @@ const PredictionForm = () => {
         setSubmitAttempted(true);
 
         if (isLastSection) {
-            // This is the final section - submit the form
             if (!isAuthenticated) {
                 addNotification('Please sign in to generate predictions', 'warning');
                 return;
@@ -2813,7 +2718,7 @@ const PredictionForm = () => {
                 return;
             }
 
-            // Prepare submission data to match backend expectations
+            // Prepare submission data
             const submissionData = {};
 
             Object.keys(formData).forEach(key => {
@@ -2821,17 +2726,15 @@ const PredictionForm = () => {
                 if (value !== '' && value !== null && value !== undefined) {
                     let processedValue = value;
 
-                    // Convert to appropriate type
                     if (FIELD_CONFIGS[key]?.type === 'number') {
                         processedValue = parseFloat(value);
                     } else if (FIELD_CONFIGS[key]?.type === 'select') {
                         processedValue = value;
                     }
 
-                    // Handle percentage fields - convert to decimal (0-1) for backend
+                    // Handle percentage fields
                     const percentageFields = [
-                        'Fin_bank', 'Fin_supplier', 'Fin_equity', 'Fin_other',
-                        'Fem_wf', 'Pvt_Own', 'Con_Own', 'Exports'
+                        'Fin_bank', 'Fin_supplier', 'Fin_equity', 'Fin_other', 'Fem_wf'
                     ];
 
                     if (percentageFields.includes(key) && processedValue > 1) {
@@ -2842,7 +2745,7 @@ const PredictionForm = () => {
                 }
             });
 
-            // Determine region for backend processing
+            // Determine region
             const country = formData.country2;
             const region = AFRICAN_COUNTRIES.includes(country) ? 'AFR' : 'ROW';
 
@@ -2860,10 +2763,9 @@ const PredictionForm = () => {
                 addNotification(error.message || 'Failed to generate prediction', 'error');
             }
         } else {
-            // Validate current section before moving to next
             if (validateCurrentSection()) {
                 goToNextSection();
-                setSubmitAttempted(false); // Reset for next section
+                setSubmitAttempted(false);
             } else {
                 addNotification('Please complete all required fields in this section', 'warning');
             }
@@ -2898,42 +2800,6 @@ const PredictionForm = () => {
         const completedFields = Object.values(formData).filter(value => value !== '' && value !== null).length;
         return Math.round((completedFields / totalFields) * 100);
     }, [formData, FIELD_CONFIGS]);
-
-    /**
-     * Render current section fields
-     */
-    const renderCurrentSectionFields = () => {
-        const country = formData.country2;
-        const currentFields = getFieldsForRegion(activeSection, country);
-
-        return currentFields.map(fieldName => {
-            const config = FIELD_CONFIGS[fieldName];
-            if (!config) return null;
-
-            // Check if field should be shown for current region
-            if (config.showForRegion && country) {
-                const isROW = !AFRICAN_COUNTRIES.includes(country);
-                const shouldShow = (config.showForRegion === 'ROW' && isROW) ||
-                    (config.showForRegion === 'AFR' && !isROW);
-                if (!shouldShow) {
-                    return null; // Don't render this field
-                }
-            }
-
-            return (
-                <InputField
-                    key={fieldName}
-                    name={fieldName}
-                    value={formData[fieldName] || ''}
-                    onChange={handleInputChange}
-                    config={config}
-                    error={validationErrors[fieldName]}
-                    required={config.required}
-                    submitAttempted={submitAttempted}
-                />
-            );
-        }).filter(Boolean); // Remove null entries
-    };
 
     return (
         <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border border-gray-200/50 overflow-hidden">
@@ -3010,7 +2876,23 @@ const PredictionForm = () => {
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {renderCurrentSectionFields()}
+                        {currentSection.fields.map(fieldName => {
+                            const config = FIELD_CONFIGS[fieldName];
+                            if (!config) return null;
+
+                            return (
+                                <InputField
+                                    key={fieldName}
+                                    name={fieldName}
+                                    value={formData[fieldName] || ''}
+                                    onChange={handleInputChange}
+                                    config={config}
+                                    error={validationErrors[fieldName]}
+                                    required={config.required}
+                                    submitAttempted={submitAttempted}
+                                />
+                            );
+                        })}
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
