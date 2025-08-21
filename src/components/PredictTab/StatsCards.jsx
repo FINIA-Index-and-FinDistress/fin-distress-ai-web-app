@@ -371,6 +371,7 @@
 
 // export default StatsCards;
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Target, Award, Building2, Shield, Loader2, AlertTriangle, RefreshCw, Lock } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
@@ -379,7 +380,7 @@ import { usePrediction } from '../../context/PredictionContext';
 
 const StatsCards = () => {
     const { addNotification } = useNotifications();
-    const { authState } = useAuth();
+    const { authState, isAuthenticated, accessToken } = useAuth(); // FIXED: Get multiple auth properties
     const { predictions } = usePrediction();
     const [stats, setStats] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -388,34 +389,54 @@ const StatsCards = () => {
     const [retryCount, setRetryCount] = useState(0);
     const [dashboardAvailable, setDashboardAvailable] = useState(true);
 
-    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1';
+    const API_BASE = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
 
+    // FIXED: Enhanced auth headers with multiple token sources and better logging
     const getAuthHeaders = useCallback(() => {
+        const token = accessToken || authState?.accessToken || authState?.token;
+
+        console.log('🔑 Auth header check:', {
+            accessToken: !!accessToken,
+            authStateAccessToken: !!authState?.accessToken,
+            authStateToken: !!authState?.token,
+            finalToken: !!token
+        });
+
         const headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         };
 
-        if (authState.token) {
-            headers.Authorization = `Bearer ${authState.token}`;
+        if (token) {
+            headers.Authorization = `Bearer ${token}`;
+            console.log('✅ Auth header added with token');
+        } else {
+            console.log('⚠️ No token available for auth header');
         }
 
         return headers;
-    }, [authState.token]);
+    }, [accessToken, authState]);
 
+    // FIXED: Enhanced API call with better error handling and logging
     const apiCall = useCallback(async (endpoint, retries = 1) => {
         let lastError;
 
         for (let attempt = 0; attempt <= retries; attempt++) {
             try {
+                const headers = getAuthHeaders();
                 console.log(`🔄 API call attempt ${attempt + 1} to: ${API_BASE}${endpoint}`);
-                console.log('Using auth token:', authState.token ? 'Yes' : 'No');
+                console.log('📋 Request headers:', {
+                    hasAuth: !!headers.Authorization,
+                    contentType: headers['Content-Type']
+                });
 
                 const response = await fetch(`${API_BASE}${endpoint}`, {
                     method: 'GET',
-                    headers: getAuthHeaders(),
+                    headers,
                     credentials: 'include'
                 });
+
+                console.log(`📥 Response status: ${response.status} ${response.statusText}`);
 
                 if (!response.ok) {
                     let errorMessage = `HTTP ${response.status}`;
@@ -425,6 +446,8 @@ const StatsCards = () => {
                     } catch (e) {
                         errorMessage = response.statusText || errorMessage;
                     }
+
+                    console.log(`❌ API error: ${errorMessage}`);
 
                     // Handle authentication errors
                     if (response.status === 401) {
@@ -448,7 +471,7 @@ const StatsCards = () => {
                 }
 
                 const data = await response.json();
-                console.log(`✅ API call successful:`, data);
+                console.log(`✅ API call successful for ${endpoint}`);
                 return data;
 
             } catch (error) {
@@ -468,10 +491,18 @@ const StatsCards = () => {
             }
         }
         throw lastError;
-    }, [API_BASE, getAuthHeaders, authState.token]);
+    }, [API_BASE, getAuthHeaders]);
 
+    // FIXED: Enhanced fetch stats with better token validation
     const fetchStats = useCallback(async (showNotification = false) => {
-        if (!authState.isAuthenticated) {
+        // CRITICAL: Check both authentication state and token availability
+        const token = accessToken || authState?.accessToken || authState?.token;
+
+        if (!isAuthenticated || !token) {
+            console.log('❌ Dashboard fetch skipped - not authenticated or no token available', {
+                isAuthenticated,
+                hasToken: !!token
+            });
             setStats([]);
             setError(null);
             setLastUpdated(null);
@@ -479,6 +510,7 @@ const StatsCards = () => {
             return;
         }
 
+        console.log('✅ Dashboard fetch starting - authenticated with token');
         setIsLoading(true);
         setError(null);
 
@@ -563,8 +595,9 @@ const StatsCards = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [authState.isAuthenticated, apiCall, addNotification, predictions]);
+    }, [isAuthenticated, authState, accessToken, apiCall, addNotification, predictions]);
 
+    // FIXED: Progress width calculation
     const getProgressWidth = useCallback((stat) => {
         switch (stat.label) {
             case 'Model Accuracy':
@@ -580,19 +613,40 @@ const StatsCards = () => {
         }
     }, []);
 
+    // FIXED: Handle refresh with token validation
     const handleRefresh = useCallback(async () => {
+        const token = accessToken || authState?.accessToken || authState?.token;
+        if (!token) {
+            console.log('❌ Refresh skipped - no token available');
+            addNotification('Please sign in again to refresh data', 'warning');
+            return;
+        }
+        console.log('🔄 Manual refresh initiated with token');
         setDashboardAvailable(true);
         await fetchStats(true);
-    }, [fetchStats]);
+    }, [fetchStats, accessToken, authState, addNotification]);
 
-    // Initial fetch
+    // FIXED: Initial fetch with delay to ensure auth state is ready
     useEffect(() => {
-        fetchStats();
-    }, [fetchStats]);
+        // Add delay to ensure auth state is fully loaded
+        const timer = setTimeout(() => {
+            const token = accessToken || authState?.accessToken || authState?.token;
+            if (isAuthenticated && token) {
+                console.log('🚀 Initial dashboard fetch with authenticated state');
+                fetchStats();
+            } else {
+                console.log('⏳ Waiting for authentication and token...');
+            }
+        }, 100);
 
-    // Periodic refresh with exponential backoff - only if dashboard is available
+        return () => clearTimeout(timer);
+    }, [isAuthenticated, accessToken, authState?.accessToken, authState?.token, fetchStats]);
+
+    // FIXED: Periodic refresh with better token checking
     useEffect(() => {
-        if (!authState.isAuthenticated || !dashboardAvailable || retryCount > 5) {
+        const token = accessToken || authState?.accessToken || authState?.token;
+
+        if (!isAuthenticated || !token || !dashboardAvailable || retryCount > 5) {
             return;
         }
 
@@ -600,13 +654,14 @@ const StatsCards = () => {
         const interval = Math.min(baseInterval * Math.pow(2, retryCount), 300000); // Max 5 minutes
 
         const timer = setInterval(() => {
-            if (document.visibilityState === 'visible') {
+            if (document.visibilityState === 'visible' && token) {
+                console.log('⏰ Periodic dashboard refresh with token available');
                 fetchStats();
             }
         }, interval);
 
         return () => clearInterval(timer);
-    }, [authState.isAuthenticated, fetchStats, retryCount, dashboardAvailable]);
+    }, [isAuthenticated, accessToken, authState?.accessToken, authState?.token, fetchStats, retryCount, dashboardAvailable]);
 
     // Update predictions count when predictions change
     useEffect(() => {
@@ -625,19 +680,24 @@ const StatsCards = () => {
         );
     }, [predictions]);
 
-    // Show authentication required state
-    if (!authState.isAuthenticated) {
+    // FIXED: Show authentication required state
+    const token = accessToken || authState?.accessToken || authState?.token;
+    if (!isAuthenticated || !token) {
         return (
             <div className="grid grid-cols-1 mb-8">
                 <div className="bg-blue-50 border border-blue-200 rounded-2xl p-8 text-center">
                     <Lock className="h-16 w-16 text-blue-500 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-blue-800 mb-2">Dashboard Access Required</h3>
-                    <p className="text-blue-600 mb-4">Sign in to view your personalized analytics and insights.</p>
+                    <p className="text-blue-600 mb-4">
+                        {!isAuthenticated
+                            ? 'Sign in to view your personalized analytics and insights.'
+                            : 'Authentication token missing. Please sign in again.'}
+                    </p>
                     <button
                         onClick={() => window.location.reload()}
                         className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                     >
-                        Sign In
+                        {!isAuthenticated ? 'Sign In' : 'Sign In Again'}
                     </button>
                 </div>
             </div>
