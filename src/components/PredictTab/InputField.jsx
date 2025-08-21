@@ -728,22 +728,21 @@ const COUNTRY_OPTIONS = [
     ...ROW_COUNTRIES.map(country => ({ label: country, value: country, region: 'ROW' }))
 ].sort((a, b) => a.label.localeCompare(b.label));
 
-// IMPORTANT: Only specific fields that are truly boolean (0/1) choices should use Yes/No
-// Based on the research variables (Table 1), these are the actual binary fields:
+// IMPORTANT: Fields that should use Yes/No instead of 0/1 - MUST MATCH PredictionForm field names
 const BINARY_FIELDS = [
-    // These are the actual binary variables from the research that should be Yes/No:
-    'startup',      // firms less than 5 years old AND small  
-    'fem_ceo',      // top manager is female (gend4)
-    'pvt_own',      // domestic private shareholder present (car2) 
-    'con_own',      // largest shareholder ≥50% ownership (car6)
-    'edu',          // unskilled labor as obstacle (obst9)
-    'exports',      // firm exports ≥1% of output (tr15)
-    'innov',        // firm invests in R&D (t10)
-    'transp',       // financial statements certified by external auditor (t2)
-    'gifting',      // makes payments/gifts to public officials (corr4)
-    'pol_inst',     // political instability as biggest obstacle (obst11)
-    'infor_comp'    // competing against informal businesses (infor1)
-    // NOTE: Percentage fields like fin_bank, fin_equity etc. are NOT binary - they're percentages
+    // From your PredictionForm - these exact field names
+    'fin16',        // Working Capital Financing
+    'fin33',        // Credit Line Usage  
+    'fem_ceo',      // Female Top Manager
+    'pvt_own',      // Private Ownership
+    'con_own',      // Concentrated Ownership
+    'edu',          // Unskilled Labor Obstacle
+    'exports',      // Export Activity
+    'innov',        // Product Innovation
+    'transp',       // Financial Statements Audited
+    'gifting',      // Payments to Public Officials
+    'pol_inst',     // Political Instability Obstacle
+    'infor_comp'    // Informal Competition
 ];
 
 const InputField = ({ name, value, onChange, config, error, required = true, submitAttempted = false }) => {
