@@ -675,19 +675,6 @@ const SECTOR_OPTIONS = [
     { label: 'Wholesale of Agri Inputs & Equipment', value: '63' }
 ];
 
-// Company Size Options - Based on the research document (Table 1)
-const COMPANY_SIZE_OPTIONS = [
-    { label: '1 (Small - < 20 employees)', value: '1' },
-    { label: '2 (Medium - 20-99 employees)', value: '2' },
-    { label: '3 (Large - > 99 employees)', value: '3' }
-];
-
-// Binary Yes/No options for specific 0/1 fields that represent boolean choices
-const YES_NO_OPTIONS = [
-    { label: 'Yes', value: '1' },
-    { label: 'No', value: '0' }
-];
-
 // Countries from the training pipeline - African countries (AFR region)
 const AFRICAN_COUNTRIES = [
     'Angola', 'Bangladesh', 'Benin', 'Botswana', 'Burkina Faso', 'Burundi', 'Cameroon',
@@ -728,23 +715,6 @@ const COUNTRY_OPTIONS = [
     ...ROW_COUNTRIES.map(country => ({ label: country, value: country, region: 'ROW' }))
 ].sort((a, b) => a.label.localeCompare(b.label));
 
-// IMPORTANT: Fields that should use Yes/No instead of 0/1 - MUST MATCH PredictionForm field names
-const BINARY_FIELDS = [
-    // From your PredictionForm - these exact field names
-    'fin16',        // Working Capital Financing
-    'fin33',        // Credit Line Usage  
-    'fem_ceo',      // Female Top Manager
-    'pvt_own',      // Private Ownership
-    'con_own',      // Concentrated Ownership
-    'edu',          // Unskilled Labor Obstacle
-    'exports',      // Export Activity
-    'innov',        // Product Innovation
-    'transp',       // Financial Statements Audited
-    'gifting',      // Payments to Public Officials
-    'pol_inst',     // Political Instability Obstacle
-    'infor_comp'    // Informal Competition
-];
-
 const InputField = ({ name, value, onChange, config, error, required = true, submitAttempted = false }) => {
     const [showTooltip, setShowTooltip] = useState(false);
 
@@ -760,31 +730,75 @@ const InputField = ({ name, value, onChange, config, error, required = true, sub
     } = config;
 
     // Determine if this is a select field
-    const isSelectField = type === 'select' ||
-        name === 'stra_sector' ||
-        name === 'country2' ||
-        name === 'company_size' ||
-        BINARY_FIELDS.includes(name);
+    const isSelectField = type === 'select' || name === 'stra_sector' || name === 'country2';
 
-    // Get options based on field name
+    // Get options based on field name with enhanced binary options
     const getFieldOptions = () => {
         if (name === 'stra_sector') {
             return SECTOR_OPTIONS;
         } else if (name === 'country2') {
             return COUNTRY_OPTIONS;
-        } else if (name === 'company_size') {
-            return COMPANY_SIZE_OPTIONS;
-        } else if (BINARY_FIELDS.includes(name)) {
-            return YES_NO_OPTIONS;
+        } else if (name === 'Size') {
+            // Company size options with clear descriptions
+            return [
+                { label: 'Small (< 20 employees)', value: '1' },
+                { label: 'Medium (20-99 employees)', value: '2' },
+                { label: 'Large (100+ employees)', value: '3' }
+            ];
         } else if (options) {
-            // Handle options from config (either array or object)
-            if (Array.isArray(options)) {
+            // Handle binary options and other predefined options
+            if (typeof options === 'object' && !Array.isArray(options)) {
+                // Convert object to array with user-friendly labels for binary fields
+                return Object.entries(options).map(([label, value]) => {
+                    // Check if this is a binary field (0/1 values)
+                    if ((value === '0' || value === '1') && (label === '0' || label === '1')) {
+                        // Apply user-friendly labels based on field type
+                        return getBinaryFieldLabel(name, value, label);
+                    }
+                    return { label, value };
+                });
+            } else if (Array.isArray(options)) {
                 return options;
-            } else if (typeof options === 'object') {
-                return Object.entries(options).map(([label, value]) => ({ label, value }));
             }
         }
         return [];
+    };
+
+    // Helper function to get user-friendly labels for binary fields
+    const getBinaryFieldLabel = (fieldName, value, originalLabel) => {
+        const binaryLabels = {
+            'fin16': {
+                '0': 'Internal funds',
+                '1': 'External financing needed'
+            },
+            'fin33': {
+                '0': 'No credit line or not used',
+                '1': 'Has and uses credit line'
+            },
+            'Fem_CEO': {
+                '0': 'No',
+                '1': 'Yes'
+            },
+            'Innov': {
+                '0': 'No new products/services',
+                '1': 'Introduced new products/services'
+            }
+        };
+
+        // Check if we have specific labels for this field
+        if (binaryLabels[fieldName] && binaryLabels[fieldName][value]) {
+            return { label: binaryLabels[fieldName][value], value };
+        }
+
+        // Default binary labels
+        if (value === '0') {
+            return { label: 'No', value };
+        } else if (value === '1') {
+            return { label: 'Yes', value };
+        }
+
+        // Fallback to original
+        return { label: originalLabel, value };
     };
 
     const fieldOptions = getFieldOptions();
@@ -821,8 +835,6 @@ const InputField = ({ name, value, onChange, config, error, required = true, sub
                         <option value="" disabled className="text-gray-500">
                             {placeholder || `Select ${label.toLowerCase()}...`}
                         </option>
-
-                        {/* Country options with grouped display */}
                         {name === 'country2' && (
                             <>
                                 <optgroup label="African Countries (AFR Region)">
@@ -847,8 +859,6 @@ const InputField = ({ name, value, onChange, config, error, required = true, sub
                                 </optgroup>
                             </>
                         )}
-
-                        {/* All other select options (sectors, company size, binary fields) */}
                         {name !== 'country2' &&
                             fieldOptions.map((option) => (
                                 <option key={option.value} value={option.value} className="text-gray-900">
