@@ -768,20 +768,20 @@ const InputField = ({ name, value, onChange, config, error, required = true, sub
     const getBinaryFieldLabel = (fieldName, value, originalLabel) => {
         const binaryLabels = {
             'fin16': {
-                '0': 'Internal funds',
-                '1': 'External financing needed'
+                '0': 'No',
+                '1': 'Yes'
             },
             'fin33': {
-                '0': 'No credit line or not used',
-                '1': 'Has and uses credit line'
+                '0': 'No',
+                '1': 'Yes'
             },
             'Fem_CEO': {
                 '0': 'No',
                 '1': 'Yes'
             },
             'Innov': {
-                '0': 'No new products/services',
-                '1': 'Introduced new products/services'
+                '0': 'No',
+                '1': 'Yes'
             }
         };
 

@@ -2309,27 +2309,27 @@ const PredictionForm = () => {
             step: 1
         },
 
-        // Financial Indicators - Backend Required - UPDATED WITH USER-FRIENDLY OPTIONS
+        // Financial Indicators - Backend Required - UPDATED WITH YES/NO OPTIONS
         fin16: {
             label: 'Working Capital Financing',
             type: 'select',
-            placeholder: 'Select financing type',
-            description: 'Primary source for working capital financing',
+            placeholder: 'Select option',
+            description: 'Do you need external financing for working capital?',
             required: true,
             options: {
-                'Internal funds': '0',
-                'External financing needed': '1'
+                'No': '0',
+                'Yes': '1'
             }
         },
         fin33: {
             label: 'Credit Line Usage',
             type: 'select',
-            placeholder: 'Select usage status',
+            placeholder: 'Select option',
             description: 'Does your company have and use a credit line?',
             required: true,
             options: {
-                'No credit line or not used': '0',
-                'Has and uses credit line': '1'
+                'No': '0',
+                'Yes': '1'
             }
         },
 
@@ -2410,7 +2410,7 @@ const PredictionForm = () => {
             step: 0.1
         },
 
-        // Business Operations - UPDATED WITH USER-FRIENDLY OPTIONS
+        // Business Operations - UPDATED WITH YES/NO OPTIONS
         Edu: {
             label: 'Workforce Education Obstacle (%)',
             type: 'number',
@@ -2435,8 +2435,8 @@ const PredictionForm = () => {
             placeholder: 'Select option',
             description: 'Has your company introduced new products/services?',
             options: {
-                'No new products/services': '0',
-                'Introduced new products/services': '1'
+                'No': '0',
+                'Yes': '1'
             }
         },
         Transp: {
