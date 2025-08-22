@@ -1,10 +1,10 @@
 import React from 'react';
-// Ensure all used FA icons are imported from react-icons/fa
+
 import { FaCheckCircle, FaExclamationTriangle, FaTimesCircle, FaInfoCircle } from 'react-icons/fa';
 import Card from '../common/Card';
-// Removed Button import as the Save button is no longer needed here
 
-const PredictionResultCard = ({ prediction }) => { // Changed prop from 'result' to 'prediction'
+
+const PredictionResultCard = ({ prediction }) => { 
     if (!prediction) return null;
 
     // Map backend prediction data to display properties for this card
@@ -17,7 +17,7 @@ const PredictionResultCard = ({ prediction }) => { // Changed prop from 'result'
     let riskColorClass = '';
     let riskIcon;
 
-    // Adjusting switch cases to match backend's risk categories
+    // switch cases to match backend's risk categories
     switch (displayRiskLevel) {
         case 'Very Low Risk':
         case 'Low Risk':

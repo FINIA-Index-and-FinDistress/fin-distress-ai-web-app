@@ -1,7 +1,5 @@
 /**
- * FinDistress AI - Pipeline-Aligned Configuration Constants
- * Field names and mappings EXACTLY matching the ML pipeline training data
- * Ensures perfect compatibility between frontend input and ML model expectations
+ * FinDistress AI - Configuration Constants
  */
 
 // ENVIRONMENT CONFIGURATION
@@ -25,7 +23,6 @@ export const FORM_SECTIONS = {
         title: 'Company Profile',
         description: 'Basic information about your company and operational history',
         businessContext: 'Help us understand your company\'s background and market position',
-        // Using EXACT pipeline field names
         fields: ['stra_sector', 'country2', 'year', 'car1', 'wk14'],
         priority: 1,
         required: true,
@@ -36,7 +33,6 @@ export const FORM_SECTIONS = {
         title: 'Financial Structure',
         description: 'How your company finances its operations and growth',
         businessContext: 'Understanding your financing mix helps assess financial stability',
-        // Using EXACT pipeline field names (fin1, fin2, etc.)
         fields: ['fin1', 'fin2', 'fin3', 'fin4', 'fin5'],
         priority: 2,
         required: true,
@@ -47,7 +43,6 @@ export const FORM_SECTIONS = {
         title: 'Ownership & Leadership',
         description: 'Company ownership structure and leadership composition',
         businessContext: 'Ownership patterns and leadership diversity affect governance',
-        // Using EXACT pipeline field names (gend2, gend4, car2, etc.)
         fields: ['car2', 'car6', 'car3', 'gend4', 'gend2', 'gend6'],
         priority: 3,
         required: false,
@@ -58,7 +53,6 @@ export const FORM_SECTIONS = {
         title: 'Market & Operations',
         description: 'Your company\'s market presence and operational capabilities',
         businessContext: 'Market diversification and operational efficiency are key factors',
-        // Using EXACT pipeline field names
         fields: ['tr15', 'size2', 'MarketCap', 't10', 'obst9'],
         priority: 4,
         required: false,
@@ -69,7 +63,6 @@ export const FORM_SECTIONS = {
         title: 'Business Environment',
         description: 'External factors affecting your business operations',
         businessContext: 'Economic and institutional conditions impact business performance',
-        // Using EXACT pipeline field names
         fields: ['GDP', 'Credit', 'PRIME', 'obst11', 'GPR'],
         priority: 5,
         required: false,
@@ -80,7 +73,6 @@ export const FORM_SECTIONS = {
         title: 'Operational Factors',
         description: 'Internal operational metrics and challenge indicators',
         businessContext: 'These factors help assess operational efficiency and constraints',
-        // Using EXACT pipeline field names
         fields: ['t2', 'corr4', 'infor1', 'WSI', 'WUI', 'perf1', 'obst1', 'fin16', 'fin33'],
         priority: 6,
         required: false,
@@ -92,7 +84,7 @@ export const FORM_SECTIONS = {
 // FIELD CONFIGURATIONS 
 
 export const FIELD_CONFIGS = {
-    // Company Profile Fields (exact pipeline names)
+    // Company Profile Fields 
     stra_sector: {
         label: 'Primary Business Sector',
         type: 'select',
@@ -165,7 +157,7 @@ export const FIELD_CONFIGS = {
         }
     },
 
-    // Financial Structure Fields (exact pipeline field names: fin1, fin2, etc.)
+    // Financial Structure Fields 
     fin1: {
         label: 'Internal Financing',
         type: 'percentage',
@@ -236,7 +228,7 @@ export const FIELD_CONFIGS = {
         businessImpact: 'Diverse financing sources improve financial resilience'
     },
 
-    // Ownership & Leadership Fields (exact pipeline names: gend2, gend4, car2, etc.)
+    // Ownership & Leadership Fields 
     car2: {
         label: 'Private Ownership',
         type: 'percentage',
@@ -317,7 +309,7 @@ export const FIELD_CONFIGS = {
         example: 10.0
     },
 
-    // Market & Operations Fields (exact pipeline names: tr15, t10, obst9, etc.)
+    // Market & Operations Fields 
     tr15: {
         label: 'Export Revenue Share',
         type: 'percentage',
@@ -387,7 +379,7 @@ export const FIELD_CONFIGS = {
         businessImpact: 'Lower education obstacles indicate better workforce capabilities'
     },
 
-    // Business Environment Fields (exact pipeline names)
+    // Business Environment Fields 
     GDP: {
         label: 'GDP Growth Rate',
         type: 'percentage',
@@ -458,7 +450,7 @@ export const FIELD_CONFIGS = {
         businessImpact: 'Lower geopolitical risk indicates more predictable operating conditions'
     },
 
-    // Operational Factors (exact pipeline names: t2, corr4, infor1, etc.)
+    // Operational Factors 
     t2: {
         label: 'Transportation Obstacles',
         type: 'percentage',
@@ -578,7 +570,7 @@ export const FIELD_CONFIGS = {
 };
 
 
-// SECTOR MAPPINGS - EXACT from Pipeline
+// SECTOR MAPPINGS 
 
 
 export const SECTOR_MAPPINGS = {
@@ -614,7 +606,7 @@ export const SECTOR_MAPPINGS = {
 };
 
 
-// REGIONS - EXACT from Pipeline
+// REGIONS 
 
 
 export const REGIONS = [
@@ -635,14 +627,14 @@ export const DEFAULT_FORM_DATA = {
     car1: 5,
     wk14: 5,
 
-    // Financial Structure (pipeline field names: fin1, fin2, etc.)
+    // Financial Structure 
     fin1: 25.0,    // Internal financing
     fin2: 30.0,    // Bank financing  
     fin3: 20.0,    // Supplier financing
     fin4: 40.0,    // Equity financing
     fin5: 10.0,    // Other financing
 
-    // Ownership (pipeline field names: car2, car6, etc.)
+    // Ownership 
     car2: 80.0,    // Private ownership
     car6: 0.0,     // Concentrated ownership
     car3: 5.0,     // Foreign ownership
@@ -650,7 +642,7 @@ export const DEFAULT_FORM_DATA = {
     gend2: 25.0,   // Female workforce
     gend6: 10.0,   // Female ownership
 
-    // Market & Operations (pipeline field names: tr15, t10, etc.)
+    // Market & Operations 
     tr15: 20.0,    // Exports
     size2: 50,     // Company size
     MarketCap: 10.0,
@@ -664,7 +656,7 @@ export const DEFAULT_FORM_DATA = {
     obst11: 5.0,   // Political instability
     GPR: 0.1,
 
-    // Operational Factors (pipeline field names: t2, corr4, etc.)
+    // Operational Factors 
     t2: 15.0,      // Transportation
     corr4: 0.0,    // Informal payments
     infor1: 90.0,  // Informal competition
@@ -679,7 +671,7 @@ export const DEFAULT_FORM_DATA = {
 };
 
 
-// REQUIRED FIELDS - Minimum needed for prediction
+// REQUIRED FIELDS 
 
 
 export const REQUIRED_FIELDS = ['stra_sector', 'wk14', 'car1'];

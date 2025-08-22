@@ -1,5 +1,4 @@
 // Service Worker for FinDistress AI
-// Place this file in your public folder as sw.js
 
 const CACHE_NAME = 'findistress-ai-v1';
 const urlsToCache = [
@@ -63,7 +62,7 @@ self.addEventListener('fetch', (event) => {
             })
             .catch((error) => {
                 console.log('Fetch failed:', error);
-                // You could return a fallback page here
+            
             })
     );
 });

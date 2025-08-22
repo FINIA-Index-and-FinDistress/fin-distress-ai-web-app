@@ -1,17 +1,18 @@
-// src/hooks/useWorldBankData.js
-import { useState, useEffect, useCallback, useRef } from 'react';
-
 /**
  * Custom hook for fetching World Bank macroeconomic data
  * Follows the same pattern as your usePredictionData hook
  */
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+
+
 const useWorldBankData = (country = null) => {
     const [data, setData] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [lastFetch, setLastFetch] = useState(null);
 
-    // Refs to prevent memory leaks (following your pattern)
+    // Refs to prevent memory leaks 
     const isMountedRef = useRef(true);
     const abortControllerRef = useRef(null);
 
@@ -37,7 +38,7 @@ const useWorldBankData = (country = null) => {
     };
 
     /**
-     * Country code mappings (matching your COUNTRY_OPTIONS)
+     * Country code mappings 
      */
     const COUNTRY_CODE_MAPPINGS = {
         // African countries

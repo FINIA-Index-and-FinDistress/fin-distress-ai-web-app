@@ -11,7 +11,7 @@ import {
 import { useNotifications } from '../context/NotificationContext';
 
 /**
- * CORRECTED NotificationsContainer Component for FinDistress AI
+ *  NotificationsContainer Component for FinDistress AI
  * Displays toast notifications with proper error handling and animations
  */
 const NotificationsContainer = () => {
@@ -68,7 +68,7 @@ const NotificationsContainer = () => {
 };
 
 /**
- * CORRECTED Individual notification toast component
+ * Individual notification toast component
  */
 const NotificationToast = ({ notification, onRemove }) => {
     const [isVisible, setIsVisible] = useState(false);

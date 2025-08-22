@@ -5,7 +5,7 @@ import { useNotifications } from '../context/NotificationContext';
 import usePredictionData from "../hooks/usePredictionData";
 
 /**
- * FIXED Insights Tab with proper data handling and no object rendering
+ * Insights Tab with proper data handling and no object rendering
  */
 const InsightsTab = () => {
     const { data, isLoading, error, refreshData, hasData, dataQuality } = usePredictionData('insights');
@@ -192,7 +192,7 @@ const InsightsTab = () => {
     );
 
     /**
-     * FIXED: Recommendations Component with safe data handling
+     * Recommendations Component with safe data handling
      */
     const RecommendationsSection = ({ recommendations }) => {
         const safeRecommendations = safeExtractData({ recommendations }, 'recommendations', []);
@@ -300,7 +300,7 @@ const InsightsTab = () => {
     };
 
     /**
-     * FIXED: Risk Alerts Component with safe data handling
+     * Risk Alerts Component with safe data handling
      */
     const RiskAlertsSection = ({ alerts }) => {
         const safeAlerts = safeExtractData({ alerts }, 'alerts', []);
@@ -391,7 +391,7 @@ const InsightsTab = () => {
     };
 
     /**
-     * FIXED: Market Context Component with safe data handling
+     * Market Context Component with safe data handling
      */
     const MarketContextSection = ({ marketContext }) => {
         const safeMarketContext = safeExtractData({ marketContext }, 'marketContext', []);
@@ -463,7 +463,7 @@ const InsightsTab = () => {
     };
 
     /**
-     * FIXED: Key Factors Analysis Component with safe data handling
+     * Key Factors Analysis Component with safe data handling
      */
     const KeyFactorsSection = ({ factors }) => {
         const safeFactors = safeExtractData({ factors }, 'factors', []);
@@ -551,7 +551,7 @@ const InsightsTab = () => {
     };
 
     /**
-     * FIXED: Insights Summary Component with safe data handling
+     * Insights Summary Component with safe data handling
      */
     const InsightsSummarySection = ({ summary }) => {
         const safeSummary = safeExtractObject({ summary }, 'summary', null);
@@ -635,7 +635,7 @@ const InsightsTab = () => {
     };
 
     /**
-     * FIXED: Render insights content with safe data handling
+     * Render insights content with safe data handling
      */
     const renderInsightsContent = () => {
         if (!data || data.isEmpty) {

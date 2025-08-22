@@ -5,7 +5,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import usePredictionData from "../../hooks/usePredictionData";
 
 /**
- * COMPLETELY FIXED Analytics Tab with working visualizations and no object rendering
+ * Analytics Tab 
  */
 const AnalyticsTab = () => {
     const { data, isLoading, error, refreshData, hasData } = usePredictionData('analytics');
@@ -27,7 +27,7 @@ const AnalyticsTab = () => {
     }, [refreshData, addNotification]);
 
     /**
-     * FIXED: Safe data extraction with guaranteed fallbacks
+     * Safe data extraction with guaranteed fallbacks
      */
     const extractAnalyticsData = useCallback(() => {
         if (!data || data.isEmpty) {
@@ -176,7 +176,7 @@ const AnalyticsTab = () => {
     );
 
     /**
-     * FIXED: Risk Distribution Chart Component - No Object Rendering
+     * Risk Distribution Chart Component - No Object Rendering
      */
     const RiskDistributionChart = ({ data: chartData, title = "Risk Distribution" }) => {
         const processedData = Array.isArray(chartData) ? chartData.map(item => ({
@@ -294,7 +294,7 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * FIXED: Trends Chart Component - No Object Rendering
+     * Trends Chart Component - No Object Rendering
      */
     const TrendsChart = ({ data: chartData, title = "Risk Trends" }) => {
         const processedData = Array.isArray(chartData) ? chartData.map(item => ({
@@ -433,7 +433,7 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * FIXED: Factors Chart Component - No Object Rendering
+     * Factors Chart Component - No Object Rendering
      */
     const FactorsChart = ({ data: chartData, title = "Top Risk Factors" }) => {
         const processedData = Array.isArray(chartData) ? chartData.map(item => ({
@@ -558,7 +558,7 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * FIXED: Summary insights component
+     * Summary insights component
      */
     const SummaryInsightsCard = ({ insights }) => {
         if (!insights || typeof insights !== 'object') return null;
@@ -607,7 +607,7 @@ const AnalyticsTab = () => {
     };
 
     /**
-     * FIXED: Main analytics content renderer
+     * Main analytics content renderer
      */
     const renderAnalyticsContent = () => {
         if (!hasData || analyticsData.totalPredictions === 0) {

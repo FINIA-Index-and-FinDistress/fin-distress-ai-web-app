@@ -1,4 +1,4 @@
-// NavigationTabs.jsx - Enhanced mobile navigation with proper authentication handling
+// NavigationTabs.jsx 
 import React, { useCallback } from 'react';
 import { Target, BarChart2, Brain, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';

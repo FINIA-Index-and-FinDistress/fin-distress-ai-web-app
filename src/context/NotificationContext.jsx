@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-
 /**
- * CORRECTED NotificationContext for FinDistress AI
+ * NotificationContext for FinDistress AI
  * Provides a robust notification system with proper error handling
  */
+
+import React, { createContext, useContext, useState, useCallback } from 'react';
+
 const NotificationContext = createContext(null);
 
 export const NotificationProvider = ({ children }) => {
@@ -19,7 +20,7 @@ export const NotificationProvider = ({ children }) => {
             const id = Date.now() + Math.random();
             const notification = {
                 id,
-                message: String(message), // Ensure message is always a string
+                message: String(message), 
                 type: type || 'info',
                 title: options.title,
                 duration: options.duration !== undefined ? options.duration : 5000,
@@ -29,7 +30,6 @@ export const NotificationProvider = ({ children }) => {
             };
 
             setNotifications(prev => {
-                // Limit to 5 notifications max to prevent memory issues
                 const newNotifications = [...prev, notification];
                 return newNotifications.slice(-5);
             });
@@ -67,7 +67,7 @@ export const NotificationProvider = ({ children }) => {
         }
     }, []);
 
-    // Enhanced notification helpers
+    // Notification helpers
     const showSuccess = useCallback((message, options = {}) => {
         return addNotification(message, 'success', options);
     }, [addNotification]);

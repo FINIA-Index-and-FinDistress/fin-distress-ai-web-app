@@ -1,4 +1,4 @@
-// BackgroundShapes.jsx - Enhanced animated background
+// BackgroundShapes.jsx - animated background
 import React from 'react';
 
 const BackgroundShapes = () => {

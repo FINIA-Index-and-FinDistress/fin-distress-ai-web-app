@@ -1,11 +1,11 @@
 // services/worldBankAPI.js
-// World Bank API service that follows your app's patterns
-
-const WORLD_BANK_BASE_URL = 'https://api.worldbank.org/v2';
-
 /**
  * World Bank API service for fetching macroeconomic indicators
  */
+
+const WORLD_BANK_BASE_URL = 'https://api.worldbank.org/v2';
+
+
 class WorldBankAPIService {
     constructor() {
         this.cache = new Map();
@@ -13,7 +13,7 @@ class WorldBankAPIService {
     }
 
     /**
-     * Mapping of your form fields to World Bank indicators
+     * Mapping of the form fields to World Bank indicators
      */
     static INDICATOR_MAPPINGS = {
         'GDP': 'NY.GDP.MKTP.KD.ZG',           // GDP growth (annual %)
@@ -43,12 +43,33 @@ class WorldBankAPIService {
         'South Sudan': 'SSD', 'Southafrica': 'ZAF', 'Sudan': 'SDN', 'Tanzania': 'TZA',
         'Tunisia': 'TUN', 'Uganda': 'UGA', 'Zambia': 'ZMB', 'Zimbabwe': 'ZWE',
 
-        // Rest of World countries (sample)
-        'United States': 'USA', 'China': 'CHN', 'Germany': 'DEU', 'Japan': 'JPN',
-        'United Kingdom': 'GBR', 'France': 'FRA', 'India': 'IND', 'Brazil': 'BRA',
-        'Canada': 'CAN', 'Australia': 'AUS', 'Mexico': 'MEX', 'Argentina': 'ARG',
-        'Indonesia': 'IDN', 'Thailand': 'THA', 'Malaysia': 'MYS', 'Singapore': 'SGP',
-        'Philippines': 'PHL', 'Viet Nam': 'VNM', 'Korea Republic': 'KOR'
+        // Rest of World countries 
+        'Afghanistan': 'AFG', 'Albania': 'ALB', 'Argentina': 'ARG', 'Armenia': 'ARM',
+        'Austria': 'AUT', 'Azerbaijan': 'AZE', 'Bahrain': 'BHR', 'Belarus': 'BLR',
+        'Belgium': 'BEL', 'Belize': 'BLZ', 'Bhutan': 'BTN', 'Bolivia': 'BOL',
+        'Bosnia and Herzegovina': 'BIH', 'Brazil': 'BRA', 'Bulgaria': 'BGR', 'Cambodia': 'KHM',
+        'Canada': 'CAN', 'Chile': 'CHL', 'China': 'CHN', 'Colombia': 'COL',
+        'Costa Rica': 'CRI', 'Croatia': 'HRV', 'Cyprus': 'CYP', 'Czechia': 'CZE',
+        'Denmark': 'DNK', 'Dominican Republic': 'DOM', 'Ecuador': 'ECU', 'El Salvador': 'SLV',
+        'Estonia': 'EST', 'Fiji': 'FJI', 'Finland': 'FIN', 'France': 'FRA',
+        'Georgia': 'GEO', 'Germany': 'DEU', 'Greece': 'GRC', 'Guatemala': 'GTM',
+        'Guyana': 'GUY', 'Honduras': 'HND', 'Hong Kong SAR China': 'HKG', 'Hungary': 'HUN',
+        'Iceland': 'ISL', 'India': 'IND', 'Indonesia': 'IDN', 'Iraq': 'IRQ',
+        'Ireland': 'IRL', 'Israel': 'ISR', 'Italy': 'ITA', 'Jamaica': 'JAM',
+        'Jordan': 'JOR', 'Kazakhstan': 'KAZ', 'Korea Republic': 'KOR', 'Kosovo': 'XKX',
+        'Kyrgyz Republic': 'KGZ', 'Lao PDR': 'LAO', 'Latvia': 'LVA', 'Lithuania': 'LTU',
+        'Luxembourg': 'LUX', 'Malaysia': 'MYS', 'Malta': 'MLT', 'Mexico': 'MEX',
+        'Moldova': 'MDA', 'Mongolia': 'MNG', 'Montenegro': 'MNE', 'Myanmar': 'MMR',
+        'Nepal': 'NPL', 'Netherlands': 'NLD', 'New Zealand': 'NZL', 'Nicaragua': 'NIC',
+        'North Macedonia': 'MKD', 'Pakistan': 'PAK', 'Panama': 'PAN', 'Papua New Guinea': 'PNG',
+        'Paraguay': 'PRY', 'Peru': 'PER', 'Philippines': 'PHL', 'Poland': 'POL',
+        'Portugal': 'PRT', 'Romania': 'ROU', 'Russia': 'RUS', 'Saudi Arabia': 'SAU',
+        'Serbia': 'SRB', 'Singapore': 'SGP', 'Slovak Republic': 'SVK', 'Slovenia': 'SVN',
+        'Spain': 'ESP', 'SriLanka': 'LKA', 'Sweden': 'SWE', 'Taiwan China': 'TWN',
+        'Tajikistan': 'TJK', 'Thailand': 'THA', 'Timor-Leste': 'TLS', 'Trinidad and Tobago': 'TTO',
+        'Turkiye': 'TUR', 'Turkmenistan': 'TKM', 'Ukraine': 'UKR', 'United Kingdom': 'GBR',
+        'United States': 'USA', 'Uruguay': 'URY', 'Uzbekistan': 'UZB', 'Venezuela': 'VEN',
+        'Viet Nam': 'VNM', 'West Bank And Gaza': 'PSE', 'Yemen': 'YEM'
     };
 
     /**
@@ -221,7 +242,7 @@ class WorldBankAPIService {
     }
 
     /**
-     * Clear cache (useful for development/testing)
+     * Clear cache 
      */
     clearCache() {
         this.cache.clear();

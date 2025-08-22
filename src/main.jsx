@@ -3,15 +3,15 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-// ENHANCED DEBUG: Log everything about API configuration
-console.log('🔧 ENHANCED API Configuration Debug:');
+// DEBUG: Log everything about API configuration
+console.log('ENHANCED API Configuration Debug:');
 console.log('Environment Mode:', import.meta.env.MODE);
 console.log('VITE_API_BASE (raw):', import.meta.env.VITE_API_BASE);
 console.log('All Environment Variables:', Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')));
 console.log('Hard-coded API Base:', 'https://findistress-ai-web-app-backend.onrender.com/api/v1');
 
 // Test the API endpoint directly
-console.log('🧪 Testing API endpoint...');
+console.log('Testing API endpoint...');
 fetch('https://findistress-ai-web-app-backend.onrender.com/api/v1/health')
     .then(response => {
         console.log('API Health Check Status:', response.status);
@@ -20,16 +20,16 @@ fetch('https://findistress-ai-web-app-backend.onrender.com/api/v1/health')
     .then(data => console.log('API Health Check Data:', data))
     .catch(error => console.error('API Health Check Failed:', error));
     
-// Performance monitoring for conference demonstration
+// Performance monitoring 
 const startTime = performance.now();
 
 // Enhanced error handling for production
 const handleGlobalError = (error) => {
     console.error('Global application error:', error);
 
-    // In production, you might want to send this to an error tracking service
+    
     if (import.meta.env.PROD) {
-        // Example: sendToErrorTracking(error);
+        
     }
 };
 

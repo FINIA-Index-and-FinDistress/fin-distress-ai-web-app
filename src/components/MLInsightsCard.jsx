@@ -1,4 +1,4 @@
-// MLInsightsCard.jsx - Enhanced insights card
+// MLInsightsCard.jsx 
 import React from 'react';
 import { LayoutDashboard, TrendingUp, TrendingDown, Target, Users, Brain } from 'lucide-react';
 import ChartCard from './AnalyticsTab/ChartCard';

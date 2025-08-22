@@ -18,28 +18,24 @@ export const PredictionProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // FIXED: Get auth data properly - destructure what we need
+
     const { user, isAuthenticated, accessToken, authState, getAuthHeaders: getAuthHeadersFromContext } = useAuth();
     const { addNotification } = useNotifications();
 
-    // API base URL with correct endpoint including /api/v1
+    // API base URL 
     const API_BASE = import.meta.env.VITE_API_BASE || 'https://findistress-ai-web-app-backend.onrender.com/api/v1';
 
-    /**
-     * FIXED: Get auth headers properly
-     */
+
     const getAuthHeaders = useCallback(() => {
         const headers = {
             'Content-Type': 'application/json'
         };
 
-        // FIXED: Try multiple ways to get the token
         let token = accessToken || authState?.accessToken || authState?.token;
 
         if (token) {
             headers.Authorization = `Bearer ${token}`;
         } else if (typeof getAuthHeadersFromContext === 'function') {
-            // Use the getAuthHeaders function from AuthContext if available
             return getAuthHeadersFromContext();
         }
 
@@ -47,7 +43,7 @@ export const PredictionProvider = ({ children }) => {
     }, [accessToken, authState, getAuthHeadersFromContext]);
 
     /**
-     * Enhanced API call wrapper with better error handling and retry logic
+     * API call wrapper with better error handling and retry logic
      */
     const apiCall = useCallback(async (endpoint, options = {}, retries = 1) => {
         let lastError;
@@ -128,7 +124,7 @@ export const PredictionProvider = ({ children }) => {
             }
         }
 
-        // Enhanced error messages
+        // Error messages
         if (lastError.name === 'TypeError' && lastError.message.includes('fetch')) {
             throw new Error('Unable to connect to the server. Please check your internet connection.');
         } else if (lastError.message === 'Not authenticated' || lastError.message.includes('401')) {
@@ -148,12 +144,12 @@ export const PredictionProvider = ({ children }) => {
      * Generate prediction with enhanced error handling
      */
     const generatePrediction = useCallback(async (inputData, region = 'AFR') => {
-        // FIXED: Check authentication properly
+        // Check authentication properly
         if (!isAuthenticated || !user) {
             throw new Error('Authentication required to generate predictions');
         }
 
-        // FIXED: Check for token
+        // Check for token
         const token = accessToken || authState?.accessToken || authState?.token;
         if (!token) {
             throw new Error('Authentication token not found. Please sign in again.');
@@ -236,17 +232,17 @@ export const PredictionProvider = ({ children }) => {
     }, [isAuthenticated, user, accessToken, authState, apiCall, addNotification]);
 
     /**
-     * Fetch predictions history with FIXED data handling
+     * Fetch predictions history with  data handling
      */
     const fetchPredictions = useCallback(async () => {
-        // FIXED: Check authentication properly
+        // Check authentication properly
         if (!isAuthenticated || !user) {
             console.log('User not authenticated, clearing predictions...');
             setPredictions([]);
             return;
         }
 
-        // FIXED: Check for token
+        // Check for token
         const token = accessToken || authState?.accessToken || authState?.token;
         if (!token) {
             console.log('No auth token available, skipping fetch...');
@@ -267,7 +263,7 @@ export const PredictionProvider = ({ children }) => {
             let predictionsData = [];
 
             if (Array.isArray(response)) {
-                // Direct array response (our updated backend)
+                // Direct array response 
                 predictionsData = response;
                 console.log('Direct array detected');
             } else if (response && response.data && Array.isArray(response.data)) {
@@ -366,7 +362,7 @@ export const PredictionProvider = ({ children }) => {
             });
 
             setPredictions(transformedPredictions);
-            console.log('✅ Predictions processed successfully:', transformedPredictions.length);
+            console.log('Predictions processed successfully:', transformedPredictions.length);
 
         } catch (error) {
             console.error('Failed to fetch predictions:', error);
@@ -379,13 +375,12 @@ export const PredictionProvider = ({ children }) => {
         }
     }, [isAuthenticated, user, accessToken, authState, apiCall]);
 
-    // ... rest of your code remains the same ...
 
     /**
      * Load predictions when user authentication changes
      */
     useEffect(() => {
-        // FIXED: Check for both authentication and token
+        // Check for both authentication and token
         if (isAuthenticated && user && (accessToken || authState?.accessToken || authState?.token)) {
             console.log('User authenticated, loading predictions...');
             // Add small delay to ensure token is properly set
@@ -401,7 +396,6 @@ export const PredictionProvider = ({ children }) => {
         }
     }, [isAuthenticated, user, accessToken, authState, fetchPredictions]);
 
-    // ... rest of your methods remain the same ...
 
     /**
      * Get prediction details

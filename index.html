@@ -48,7 +48,7 @@
   <link rel="icon" type="image/png" sizes="16x16"
     href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAAJVSURBVHjarJNLSFRhFMd/5303c5+Ok5ZNg5lN2YNKi0ohJbAHFEW0aCGFG1u0CFrUoh6LICIIKqJFG3tQi4ggKKhFiyAqKqJoEUFFWEZFZJM6zjxm7p37/VsUNeVMGBz4Pzjf+c53/uc7nwkhxP8ex3EcIYQQQgghRM6yLEeIiMYYMwHAT4j9+5NSSimlJKXMGdOyzh/BcRw7MDxiPn/zPnDnzs1f3Xt7G0yHRmfh8HB5kYi3LlBfU2E6zrm7y2trq1u6Ojoq6ho6j0zuGzxz5erld3eee2Ojk9YfJz4Tn0gihLA2NTRZ3d2drlwVJsfHqHE/OhwdGLh57+HDC0NDwyJXJWL3t3+FaZpCCCGEEBcuXrr36NHjv2y3m0gkgud5CCGIx+N4vV42btyIEIJcLkcmk8H3fSzLQinFihUrWLt2LZZlkc1miUajGIZBKBTC931qtZooFAqkUikkSdI0zTp8+NC3X79+Y9s2ruvyZuGlXyqVyGaz2LZNoVDAcRx0XcfzPFzXxbIsMpkMrY1NhBvrqVnZSsuvr49+fO+YntzcePzYYX3D+nXa7du3aW5uJhgM/nNaSiXS6TTBYJCamhp6enooyAqLJaPRhQVG7g3V1iyp6u7qXJHNZkkmkywtLWGaJoZhIMuy57o+C/PLNq67xt67Z/eh9u07dmGa5nT30vRb3/d8LGN4d3f1pu3btj1RdSUshIAx5l9c8Cul/B4T0HX9uxBCoJS6E8cxWK9eOpw7v2Ty30fHTv8dADAzFiPCrr8lAAAAAElFTkSuQmCC">
 
-  <!-- PWA Manifest - Optional, comment out if manifest.json doesn't exist -->
+  <!-- PWA Manifest - Optional -->
   <!-- <link rel="manifest" href="/manifest.json"> -->
 
   <!-- Theme Colors -->
@@ -95,7 +95,7 @@
     }
     </script>
 
-  <!-- FIXED Security Headers - Added your Render backend URL -->
+  <!-- Security Headers -->
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com; img-src 'self' data: https:; connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 https://api.findistress.ai https://findistress-ai-web-app-backend.onrender.com https://www.google-analytics.com;">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
@@ -127,7 +127,7 @@
     // Track when the page becomes interactive
     document.addEventListener('DOMContentLoaded', function () {
       window.domLoadTime = performance.now() - window.loadStartTime;
-      console.log(`📊 DOM loaded in ${window.domLoadTime.toFixed(2)}ms`);
+      console.log(`DOM loaded in ${window.domLoadTime.toFixed(2)}ms`);
     });
   </script>
 

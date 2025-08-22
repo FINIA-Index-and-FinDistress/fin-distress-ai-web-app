@@ -4,7 +4,7 @@ import useWorldBankData from '../hooks/useWorldBankData';
 
 /**
  * Macro Auto-Fill Component
- * Integrates with your existing form to auto-populate macroeconomic fields
+ * Integrates with the existing form to auto-populate macroeconomic fields
  */
 const MacroAutoFill = ({
     selectedCountry,
@@ -34,7 +34,7 @@ const MacroAutoFill = ({
     // Track which fields are auto-filled vs manually entered
     const [autoFilledFields, setAutoFilledFields] = useState(new Set());
 
-    // Macro field definitions matching your backend expectations
+    // Macro field definitions 
     const MACRO_FIELDS = {
         'GDP': {
             label: 'GDP Growth Rate (%)',

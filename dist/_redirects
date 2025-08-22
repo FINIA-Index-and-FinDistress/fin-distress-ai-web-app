@@ -1,4 +1,4 @@
-# Netlify _redirects file - place this in your public folder
+# Netlify _redirects file 
 
 # SPA fallback - redirect all routes to index.html for client-side routing
 /*    /index.html   200
