@@ -543,7 +543,7 @@ const AuthModal = ({ showAuthModal, setShowAuthModal, authError, onSuccess }) =>
                     <div className="flex items-start">
                         <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
                         <div>
-                            <p className="text-sm text-blue-800 font-medium mb-1">Demo Ready</p>
+                            <p className="text-sm text-blue-800 font-medium mb-1">Get Started</p>
                             <p className="text-xs text-blue-700">
                                 Use any username and secure password (min 6 characters) to test the application.
                                 Your data will be securely stored and can be accessed later.
