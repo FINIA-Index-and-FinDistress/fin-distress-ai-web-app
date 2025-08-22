@@ -1,12 +1,16 @@
 # Netlify _redirects file 
 
-# SPA fallback - redirect all routes to index.html for client-side routing
-/*    /index.html   200
+# IMPORTANT: Static assets must come FIRST before catch-all rules
+/assets/*   /assets/:splat   200
 
-# API proxy rules (optional - if you need to proxy API calls)
+# API proxy rules
 /api/*  https://findistress-ai-web-app-backend.onrender.com/api/:splat  200
 
-# Specific redirects for common paths
+# Specific redirects for common paths (optional - the catch-all below handles these)
 /predict    /index.html    200
 /analytics  /index.html    200
 /insights   /index.html    200
+
+# SPA fallback - redirect all OTHER routes to index.html for client-side routing
+# This MUST come last
+/*    /index.html   200
