@@ -96,19 +96,19 @@ const WelcomeScreen = ({ onGetStarted }) => {
     ];
 
     const platformFeatures = [
-        'Interactive Dashboard',
-        'Real-time Analytics',
-        'Country Rankings',
-        'Fintech Directory',
-        'Market News & Insights'
+        'Financial Distress Prediction',
+        'SHAP Explainability Analysis',
+        'Multi-Section Input Forms',
+        'Historical Analytics Dashboard',
+        'Real-time Risk Assessments'
     ];
 
     const researchFeatures = [
-        'Research Methodology',
-        'Academic Publications',
-        'Open Source Datasets',
-        'API Documentation',
-        'Technical Reports'
+        'LightGBM Model Architecture',
+        'Multi-Regional Training Data',
+        'Academic Research Publications',
+        'Open Source Model Access',
+        'Financial Analytics Documentation'
     ];
 
     return (
