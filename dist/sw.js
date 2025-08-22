@@ -1,5 +1,4 @@
 // Service Worker for FinDistress AI
-
 const CACHE_NAME = 'findistress-ai-v1';
 const urlsToCache = [
     '/',
@@ -62,7 +61,6 @@ self.addEventListener('fetch', (event) => {
             })
             .catch((error) => {
                 console.log('Fetch failed:', error);
-            
             })
     );
 });
